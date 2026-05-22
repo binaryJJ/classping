@@ -27,10 +27,6 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  function handleKakao() {
-    alert('카카오 로그인은 서비스 연동 후 사용 가능합니다.\n(데모: admin / 1234)')
-  }
-
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
@@ -40,12 +36,12 @@ export default function LoginPage() {
       <div className="flex flex-col items-center mb-10">
         <div
           className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-          style={{ background: 'var(--c-primary)' }}
+          style={{ background: 'linear-gradient(135deg, #F4547A, #F96D8A)' }}
         >
           <GraduationCap size={32} color="white" strokeWidth={1.8} />
         </div>
-        <h1 className="text-2xl font-bold text-w-heading tracking-tight">ClassPing</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--c-secondary)' }}>손쉬운 학원 관리 시스템</p>
+        <h1 className="text-2xl font-bold text-w-heading tracking-tight">링키영어</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--c-secondary)' }}>링키영어 학원 관리 시스템</p>
       </div>
 
       {/* Form */}
@@ -98,23 +94,6 @@ export default function LoginPage() {
             {loading ? '로그인 중...' : '로그인'}
           </button>
         </form>
-
-        <div className="flex items-center gap-3 my-4">
-          <div className="flex-1" style={{ borderTop: '1px solid var(--c-border)' }} />
-          <span className="text-xs" style={{ color: 'var(--c-secondary)' }}>또는</span>
-          <div className="flex-1" style={{ borderTop: '1px solid var(--c-border)' }} />
-        </div>
-
-        <button
-          onClick={handleKakao}
-          className="w-full py-3 rounded-pill font-medium text-sm t-base flex items-center justify-center gap-2"
-          style={{ background: '#FEE500', color: '#191919' }}
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M9 1.5C4.858 1.5 1.5 4.134 1.5 7.38c0 2.07 1.356 3.888 3.402 4.944l-.87 3.24a.2.2 0 00.306.216L8.31 13.17c.228.018.459.03.69.03 4.142 0 7.5-2.634 7.5-5.88C16.5 4.134 13.142 1.5 9 1.5z" fill="#191919"/>
-          </svg>
-          카카오로 로그인
-        </button>
       </div>
 
       <p className="mt-6 text-xs" style={{ color: 'var(--c-secondary)' }}>

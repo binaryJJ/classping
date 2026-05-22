@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import StudentForm from '@/components/students/StudentForm'
 import { Student } from '@/lib/types'
-import { isAdult } from '@/lib/utils'
 import { useBranch } from '@/lib/BranchContext'
 
 export default function EditStudentPage({ params }: { params: { id: string } }) {
@@ -13,7 +12,7 @@ export default function EditStudentPage({ params }: { params: { id: string } }) 
   const student = students.find(s => s.id === params.id)
 
   async function handleSubmit(data: Omit<Student, 'id' | 'created_at' | 'is_adult'>) {
-    console.log('학생 수정:', { ...data, id: params.id, is_adult: isAdult(data.birth_date) })
+    console.log('학생 수정:', { ...data, id: params.id })
     alert(`${data.name} 학생 정보가 수정되었습니다!`)
     router.push(`/students/${params.id}`)
   }

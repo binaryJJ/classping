@@ -9,14 +9,14 @@ import { calculateAge, formatDate, formatCurrency } from '@/lib/utils'
 import { useBranch } from '@/lib/BranchContext'
 
 const DEMO_ATTENDANCE = [
-  { date: '2026-05-22', status: 'present', subject: '기타' },
-  { date: '2026-05-20', status: 'absent', subject: '기타' },
-  { date: '2026-05-15', status: 'present', subject: '기타' },
-  { date: '2026-05-13', status: 'makeup', subject: '기타' },
-  { date: '2026-05-08', status: 'absent', subject: '기타' },
-  { date: '2026-05-06', status: 'present', subject: '기타' },
-  { date: '2026-04-29', status: 'present', subject: '기타' },
-  { date: '2026-04-22', status: 'absent', subject: '기타' },
+  { date: '2026-05-22', status: 'present', subject: '영어' },
+  { date: '2026-05-21', status: 'absent', subject: '영어' },
+  { date: '2026-05-20', status: 'present', subject: '영어' },
+  { date: '2026-05-19', status: 'makeup', subject: '영어' },
+  { date: '2026-05-15', status: 'present', subject: '영어' },
+  { date: '2026-05-14', status: 'absent', subject: '영어' },
+  { date: '2026-05-13', status: 'present', subject: '영어' },
+  { date: '2026-05-12', status: 'present', subject: '영어' },
 ]
 
 const STATUS_LABEL: Record<string, string> = { present: '출석', absent: '결석', makeup: '보강' }
@@ -134,13 +134,12 @@ export default function StudentDetailPage({ params }: { params: { id: string } }
       </div>
 
       <div className="flex flex-col items-center py-8" style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>
-        <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold mb-3" style={{ background: 'rgba(124,58,237,0.1)', color: 'var(--c-primary)' }}>
+        <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold mb-3" style={{ background: 'rgba(244,84,122,0.1)', color: 'var(--c-primary)' }}>
           {student.name[0]}
         </div>
         <h1 className="text-xl font-bold text-w-heading mb-2">{student.name}</h1>
         <div className="flex items-center gap-2">
-          <Badge variant={student.is_adult ? 'adult' : 'minor'}>{student.is_adult ? '성인' : '미성년자'}</Badge>
-          <Badge variant={student.subjectVariant}>{student.subject}</Badge>
+          <Badge variant="english">{student.subject}</Badge>
           <span className="text-sm" style={{ color: 'var(--c-secondary)' }}>만 {calculateAge(student.birth_date)}세</span>
         </div>
       </div>
@@ -167,19 +166,17 @@ export default function StudentDetailPage({ params }: { params: { id: string } }
           </div>
         </section>
 
-        {!student.is_adult && (
-          <section>
-            <p className="text-xs font-semibold mb-2 px-1" style={{ color: 'var(--c-warning)' }}>보호자 정보</p>
-            <div className="w-card" style={{ padding: 0, overflow: 'hidden' }}>
-              {[{ label: '이름', value: student.guardian_name ?? '-' }, { label: '이메일', value: student.guardian_email ?? '-' }, { label: '연락처', value: student.guardian_phone ?? '-' }].map((row, i, arr) => (
-                <div key={row.label} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--c-border)' : 'none' }}>
-                  <span className="text-sm" style={{ color: 'var(--c-secondary)' }}>{row.label}</span>
-                  <span className="text-sm font-medium text-w-body">{row.value}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        <section>
+          <p className="text-xs font-semibold mb-2 px-1" style={{ color: 'var(--c-primary)' }}>보호자 정보</p>
+          <div className="w-card" style={{ padding: 0, overflow: 'hidden' }}>
+            {[{ label: '이름', value: student.guardian_name ?? '-' }, { label: '이메일', value: student.guardian_email ?? '-' }, { label: '연락처', value: student.guardian_phone ?? '-' }].map((row, i, arr) => (
+              <div key={row.label} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--c-border)' : 'none' }}>
+                <span className="text-sm" style={{ color: 'var(--c-secondary)' }}>{row.label}</span>
+                <span className="text-sm font-medium text-w-body">{row.value}</span>
+              </div>
+            ))}
+          </div>
+        </section>
 
         <section>
           <div className="flex items-center justify-between mb-2 px-1">

@@ -4,13 +4,12 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import StudentForm from '@/components/students/StudentForm'
 import { Student } from '@/lib/types'
-import { isAdult } from '@/lib/utils'
 
 export default function NewStudentPage() {
   const router = useRouter()
 
   async function handleSubmit(data: Omit<Student, 'id' | 'created_at' | 'is_adult'>) {
-    console.log('학생 등록:', { ...data, is_adult: isAdult(data.birth_date) })
+    console.log('학생 등록:', data)
     alert(`${data.name} 학생이 등록되었습니다!`)
     router.push('/students')
   }

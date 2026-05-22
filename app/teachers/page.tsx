@@ -5,8 +5,6 @@ import { Plus, Pencil, Trash2, X } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 import { useBranch, SUBJECTS, Teacher } from '@/lib/BranchContext'
 
-const SUBJECT_TABS = SUBJECTS.map(s => ({ id: s.id, name: s.name, variant: s.variant, color: s.color }))
-
 function calcTenure(startDate: string): string {
   const start = new Date(startDate)
   const now = new Date()
@@ -20,33 +18,30 @@ function calcTenure(startDate: string): string {
 
 interface TeacherFormData {
   name: string
-  subject_id: string
   monthly_salary: string
   start_date: string
 }
 
-const EMPTY_FORM: TeacherFormData = { name: '', subject_id: '1', monthly_salary: '', start_date: '' }
+const EMPTY_FORM: TeacherFormData = { name: '', monthly_salary: '', start_date: '' }
+const ENGLISH_SUBJECT = SUBJECTS[0]
 
 export default function TeachersPage() {
   const { teachers, students, selectedBranch, addTeacher, updateTeacher, deleteTeacher } = useBranch()
-  const [activeSubjectId, setActiveSubjectId] = useState(SUBJECTS[0].id)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<TeacherFormData>(EMPTY_FORM)
   const [formError, setFormError] = useState('')
 
-  const filtered = teachers.filter(t => t.subject_id === activeSubjectId)
-
   function openAdd() {
     setEditingId(null)
-    setForm({ ...EMPTY_FORM, subject_id: activeSubjectId })
+    setForm(EMPTY_FORM)
     setFormError('')
     setModalOpen(true)
   }
 
   function openEdit(t: Teacher) {
     setEditingId(t.id)
-    setForm({ name: t.name, subject_id: t.subject_id, monthly_salary: String(t.monthly_salary), start_date: t.start_date })
+    setForm({ name: t.name, monthly_salary: String(t.monthly_salary), start_date: t.start_date })
     setFormError('')
     setModalOpen(true)
   }
@@ -60,12 +55,11 @@ export default function TeachersPage() {
     if (!form.start_date) { setFormError('입사일을 입력해주세요.'); return }
     const salary = Number(form.monthly_salary)
     if (!salary || salary <= 0) { setFormError('월 급여를 입력해주세요.'); return }
-    const subj = SUBJECTS.find(s => s.id === form.subject_id)!
     const data = {
       name: form.name.trim(),
-      subject_id: form.subject_id,
-      subject: subj.name,
-      subjectVariant: subj.variant as Teacher['subjectVariant'],
+      subject_id: ENGLISH_SUBJECT.id,
+      subject: ENGLISH_SUBJECT.name,
+      subjectVariant: ENGLISH_SUBJECT.variant as Teacher['subjectVariant'],
       monthly_salary: salary,
       start_date: form.start_date,
       assignedStudentIds: [] as string[],
@@ -76,12 +70,10 @@ export default function TeachersPage() {
       addTeacher(data)
     }
     setModalOpen(false)
-    setActiveSubjectId(form.subject_id)
   }
 
   return (
     <div style={{ background: 'var(--c-subtle)', minHeight: '100%' }}>
-      {/* Header */}
       <div className="w-header px-4 flex items-center justify-between">
         <div>
           <h1 className="text-base font-bold text-w-heading">강사</h1>
@@ -96,28 +88,18 @@ export default function TeachersPage() {
         </button>
       </div>
 
-      {/* Subject Tabs */}
-      <div className="flex px-4 pt-3 gap-2 overflow-x-auto" style={{ borderBottom: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
-        {SUBJECT_TABS.map(tab => {
-          const active = tab.id === activeSubjectId
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveSubjectId(tab.id)}
-              className="flex-shrink-0 pb-2.5 px-1 text-sm font-semibold t-base"
-              style={{
-                color: active ? tab.color : 'var(--c-secondary)',
-                borderBottom: active ? `2px solid ${tab.color}` : '2px solid transparent',
-              }}
-            >
-              {tab.name}
-            </button>
-          )
-        })}
+      {/* English subject label */}
+      <div className="px-4 pt-3 pb-2" style={{ borderBottom: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
+        <span
+          className="inline-flex items-center px-3 py-1.5 rounded-pill text-sm font-semibold"
+          style={{ background: 'rgba(91,196,192,0.15)', color: '#5BC4C0', border: '1.5px solid #5BC4C0' }}
+        >
+          영어
+        </span>
       </div>
 
       <div className="px-4 py-4 space-y-3">
-        {filtered.length === 0 ? (
+        {teachers.length === 0 ? (
           <div className="w-card py-14 text-center">
             <p className="text-sm" style={{ color: 'var(--c-secondary)' }}>등록된 강사가 없습니다</p>
             <button onClick={openAdd} className="text-sm font-medium mt-2 inline-block" style={{ color: 'var(--c-primary)' }}>
@@ -125,25 +107,23 @@ export default function TeachersPage() {
             </button>
           </div>
         ) : (
-          filtered.map(teacher => {
-            const subjDef = SUBJECTS.find(s => s.id === teacher.subject_id)!
+          teachers.map(teacher => {
             const assignedStudents = students.filter(s => s.subject_id === teacher.subject_id)
             const annualSalary = teacher.monthly_salary * 12
             return (
               <div key={teacher.id} className="w-card">
-                {/* Teacher header row */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div
                       className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold flex-shrink-0"
-                      style={{ background: subjDef.color + '18', color: subjDef.color }}
+                      style={{ background: 'rgba(91,196,192,0.15)', color: '#5BC4C0' }}
                     >
                       {teacher.name[0]}
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-base font-bold text-w-heading">{teacher.name}</span>
-                        <Badge variant={teacher.subjectVariant}>{teacher.subject}</Badge>
+                        <Badge variant="english">{teacher.subject}</Badge>
                       </div>
                       <p className="text-xs mt-0.5" style={{ color: 'var(--c-secondary)' }}>
                         근속 {calcTenure(teacher.start_date)} · {teacher.start_date} 입사
@@ -160,7 +140,6 @@ export default function TeachersPage() {
                   </div>
                 </div>
 
-                {/* Stats row */}
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="rounded-input px-3 py-2.5" style={{ background: 'var(--c-subtle)' }}>
                     <p className="text-[11px]" style={{ color: 'var(--c-secondary)' }}>월 급여</p>
@@ -172,19 +151,18 @@ export default function TeachersPage() {
                   </div>
                 </div>
 
-                {/* Students */}
                 <div>
                   <div className="flex items-center gap-1.5 mb-2">
-                    <p className="text-xs font-semibold" style={{ color: 'var(--c-secondary)' }}>담당 수강생</p>
+                    <p className="text-xs font-semibold" style={{ color: 'var(--c-secondary)' }}>담당 학생</p>
                     <span
                       className="text-xs font-bold px-1.5 py-0.5 rounded-pill"
-                      style={{ background: subjDef.color + '18', color: subjDef.color }}
+                      style={{ background: 'rgba(91,196,192,0.15)', color: '#5BC4C0' }}
                     >
                       {assignedStudents.length}명
                     </span>
                   </div>
                   {assignedStudents.length === 0 ? (
-                    <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>담당 수강생 없음</p>
+                    <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>담당 학생 없음</p>
                   ) : (
                     <div className="flex flex-wrap gap-1.5">
                       {assignedStudents.map(st => (
@@ -223,13 +201,10 @@ export default function TeachersPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-w-heading mb-1.5">담당 과목</label>
-                <select
-                  className="w-input"
-                  value={form.subject_id}
-                  onChange={e => setForm(f => ({ ...f, subject_id: e.target.value }))}
-                >
-                  {SUBJECTS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                <div className="w-input flex items-center gap-2" style={{ background: 'var(--c-subtle)', cursor: 'default' }}>
+                  <Badge variant="english">영어</Badge>
+                  <span className="text-sm" style={{ color: 'var(--c-secondary)' }}>링키영어 전담</span>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-w-heading mb-1.5">월 급여 (원)</label>

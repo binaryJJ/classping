@@ -1,11 +1,11 @@
 {
-  "name": "ClassPing",
-  "short_name": "ClassPing",
-  "description": "학원 출결 관리 앱",
+  "name": "링키영어 율현점",
+  "short_name": "링키영어",
+  "description": "링키영어 율현점 출결 관리 앱",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#7c3aed",
+  "background_color": "#FFF5F7",
+  "theme_color": "#F4547A",
   "orientation": "portrait",
   "icons": [
     {

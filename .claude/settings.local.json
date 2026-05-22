@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"D:\\\\2_V\\\\my_project\\\\ClassPing2\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Read(//home/user/.claude/**)",
+      "Read(//c/Users/user/.claude/**)",
+      "Bash(npx playwright *)",
+      "PowerShell(npm list *)"
+    ]
+  }
+}

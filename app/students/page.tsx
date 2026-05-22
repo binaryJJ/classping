@@ -8,23 +8,19 @@ import { calculateAge, formatCurrency } from '@/lib/utils'
 import { useBranch } from '@/lib/BranchContext'
 
 export default function StudentsPage() {
-  const { students, selectedBranch } = useBranch()
-  const branchLabel = selectedBranch.slice(0, 2)
+  const { students } = useBranch()
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<'all' | 'adult' | 'minor'>('all')
 
-  const filtered = students.filter(s => {
-    const matchSearch = s.name.includes(search) || s.phone.includes(search)
-    const matchFilter = filter === 'all' || (filter === 'adult' ? s.is_adult : !s.is_adult)
-    return matchSearch && matchFilter
-  })
+  const filtered = students.filter(s =>
+    s.name.includes(search) || s.phone.includes(search)
+  )
 
   return (
     <div style={{ background: 'var(--c-subtle)', minHeight: '100%' }}>
       <div className="w-header px-4 flex items-center justify-between">
         <div>
           <h1 className="text-base font-bold text-w-heading">학생</h1>
-          <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>{selectedBranch}</p>
+          <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>링키영어 율현점</p>
         </div>
         <Link href="/students/new">
           <div className="w-8 h-8 rounded-full flex items-center justify-center t-base hover:opacity-80" style={{ background: 'var(--c-primary)' }}>
@@ -46,23 +42,6 @@ export default function StudentsPage() {
           />
         </div>
 
-        <div className="flex gap-2">
-          {([['all', '전체'], ['minor', '미성년'], ['adult', '성인']] as const).map(([val, label]) => (
-            <button
-              key={val}
-              onClick={() => setFilter(val)}
-              className="px-4 py-1.5 rounded-pill text-sm font-medium t-base"
-              style={{
-                background: filter === val ? 'var(--c-primary)' : 'var(--c-surface)',
-                color: filter === val ? 'white' : 'var(--c-secondary)',
-                border: filter === val ? 'none' : '1px solid var(--c-border)',
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
         <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>{filtered.length}명</p>
 
         {filtered.length === 0 ? (
@@ -81,14 +60,13 @@ export default function StudentsPage() {
                 className="flex items-center px-4 py-3 t-base hover:bg-w-subtle"
                 style={{ borderBottom: idx < filtered.length - 1 ? '1px solid var(--c-border)' : 'none' }}
               >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold mr-3 flex-shrink-0" style={{ background: 'rgba(124,58,237,0.1)', color: 'var(--c-primary)', fontSize: '11px' }}>
-                  {branchLabel}
+                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold mr-3 flex-shrink-0 text-sm" style={{ background: 'rgba(244,84,122,0.1)', color: 'var(--c-primary)' }}>
+                  {s.name[0]}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-sm font-semibold text-w-heading">{s.name}</span>
-                    <Badge variant={s.is_adult ? 'adult' : 'minor'}>{s.is_adult ? '성인' : '미성년'}</Badge>
-                    <Badge variant={s.subjectVariant}>{s.subject}</Badge>
+                    <Badge variant="english">{s.subject}</Badge>
                   </div>
                   <div className="text-xs mt-0.5" style={{ color: 'var(--c-secondary)' }}>만 {calculateAge(s.birth_date)}세 · {s.phone}</div>
                 </div>

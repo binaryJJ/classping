@@ -13,9 +13,8 @@ interface AttendanceRecord {
   studentId: string
   name: string
   subject: string
-  subjectVariant: 'guitar' | 'bass' | 'drums' | 'vocal'
+  subjectVariant: 'english'
   time: string
-  isAdult: boolean
   notifyEmail: string
 }
 
@@ -63,7 +62,7 @@ export default function AttendancePage() {
       if (!subj.dayOfWeek.includes(dow)) continue
       for (const st of students) {
         if (st.subject_id !== subj.id) continue
-        result.push({ studentId: st.id, name: st.name, subject: st.subject, subjectVariant: st.subjectVariant, time: subj.startTime, isAdult: st.is_adult, notifyEmail: st.notifyEmail })
+        result.push({ studentId: st.id, name: st.name, subject: st.subject, subjectVariant: st.subjectVariant, time: subj.startTime, notifyEmail: st.notifyEmail })
       }
     }
     return result
@@ -71,13 +70,12 @@ export default function AttendancePage() {
 
   const dateStatuses = statuses[selectedDate] ?? {}
 
-  // 도트: 상태 있으면 상태 색, 수업 있는 날이면 보라, 없으면 null
   function getDotColor(date: string, dayOfWeek: number): string | null {
     const s = Object.values(statuses[date] ?? {})
     if (s.some(v => v === 'absent')) return 'var(--c-error)'
     if (s.every(v => v === 'present') && s.length > 0) return 'var(--c-success)'
     if (s.length > 0) return 'var(--c-warning)'
-    if (SUBJECTS.some(subj => subj.dayOfWeek.includes(dayOfWeek))) return '#7c3aed'
+    if (SUBJECTS.some(subj => subj.dayOfWeek.includes(dayOfWeek))) return 'var(--c-primary)'
     return null
   }
 
@@ -111,10 +109,10 @@ export default function AttendancePage() {
     try {
       const res = await fetch('/api/notify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'absence', studentName: notifyModal.student.name, date: formatDate(selectedDate), subjectName: notifyModal.student.subject, teacherName: '담당 강사', recipientEmail: notifyModal.student.notifyEmail, recipientName: notifyModal.student.isAdult ? notifyModal.student.name : '보호자', isGuardian: !notifyModal.student.isAdult }),
+        body: JSON.stringify({ type: 'absence', studentName: notifyModal.student.name, date: formatDate(selectedDate), subjectName: notifyModal.student.subject, teacherName: '담당 강사', recipientEmail: notifyModal.student.notifyEmail, recipientName: '보호자', isGuardian: true }),
       })
       const data = await res.json()
-      alert(data.success ? '알림이 발송되었습니다!' : 'RESEND_API_KEY를 .env.local에 설정해주세요')
+      alert(data.success ? '보호자에게 알림이 발송되었습니다!' : 'RESEND_API_KEY를 .env.local에 설정해주세요')
     } catch { alert('알림 발송 실패') }
     finally { setSending(false); setNotifyModal({ open: false }) }
   }
@@ -125,10 +123,10 @@ export default function AttendancePage() {
     try {
       const res = await fetch('/api/notify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'makeup', studentName: makeupModal.student.name, originalDate: formatDate(selectedDate), makeupDate: formatDate(makeupDate), subjectName: makeupModal.student.subject, teacherName: '담당 강사', recipientEmail: makeupModal.student.notifyEmail, recipientName: makeupModal.student.isAdult ? makeupModal.student.name : '보호자', isGuardian: !makeupModal.student.isAdult }),
+        body: JSON.stringify({ type: 'makeup', studentName: makeupModal.student.name, originalDate: formatDate(selectedDate), makeupDate: formatDate(makeupDate), subjectName: makeupModal.student.subject, teacherName: '담당 강사', recipientEmail: makeupModal.student.notifyEmail, recipientName: '보호자', isGuardian: true }),
       })
       const data = await res.json()
-      alert(data.success ? '보강 알림 발송!' : 'RESEND_API_KEY를 설정해주세요')
+      alert(data.success ? '보강 알림이 보호자에게 발송되었습니다!' : 'RESEND_API_KEY를 설정해주세요')
     } catch { alert('알림 발송 실패') }
     finally { setSending(false); setMakeupModal({ open: false }); setMakeupDate('') }
   }
@@ -179,7 +177,7 @@ export default function AttendancePage() {
                   <span
                     className="w-7 h-7 flex items-center justify-center rounded-full text-xs t-base"
                     style={{
-                      background: isSelected ? 'var(--c-primary)' : isToday ? 'rgba(124,58,237,0.12)' : 'transparent',
+                      background: isSelected ? 'var(--c-primary)' : isToday ? 'rgba(244,84,122,0.12)' : 'transparent',
                       color: isSelected ? '#fff' : isHoliday ? 'var(--c-error)' : day === 6 ? 'var(--c-primary)' : 'var(--c-body)',
                       fontWeight: isSelected || isToday ? 700 : 400,
                     }}
@@ -222,13 +220,13 @@ export default function AttendancePage() {
                   <div key={record.studentId} className="w-card" style={{ padding: '16px' }}>
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm" style={{ background: 'rgba(124,58,237,0.1)', color: 'var(--c-primary)' }}>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm" style={{ background: 'rgba(244,84,122,0.1)', color: 'var(--c-primary)' }}>
                           {record.name[0]}
                         </div>
                         <div>
                           <div className="text-sm font-semibold text-w-heading">{record.name}</div>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <Badge variant={record.subjectVariant}>{record.subject}</Badge>
+                            <Badge variant="english">{record.subject}</Badge>
                             <span className="text-xs" style={{ color: 'var(--c-secondary)' }}>{record.time}</span>
                             {locked && <span className="text-xs font-medium px-1.5 py-0.5 rounded-pill" style={{ background: 'rgba(112,115,124,0.1)', color: 'var(--c-secondary)' }}>잠금</span>}
                           </div>
@@ -278,11 +276,11 @@ export default function AttendancePage() {
           <div className="space-y-4">
             <div className="px-4 py-3 rounded-card" style={{ background: 'var(--c-subtle)' }}>
               <p className="text-sm font-semibold text-w-heading">{notifyModal.student.name} 결석 처리됨</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--c-secondary)' }}>{notifyModal.student.isAdult ? '본인' : '보호자'}({notifyModal.student.notifyEmail})에게 알림을 발송할까요?</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--c-secondary)' }}>보호자({notifyModal.student.notifyEmail})에게 알림을 발송할까요?</p>
             </div>
             <div className="flex gap-2">
               <Button variant="secondary" fullWidth onClick={() => setNotifyModal({ open: false })}>건너뛰기</Button>
-              <Button fullWidth onClick={sendNotification} disabled={sending}>{sending ? '발송 중...' : '알림 발송'}</Button>
+              <Button fullWidth onClick={sendNotification} disabled={sending}>{sending ? '발송 중...' : '보호자 알림 발송'}</Button>
             </div>
           </div>
         )}
@@ -301,7 +299,7 @@ export default function AttendancePage() {
             </div>
             <div className="flex gap-2">
               <Button variant="secondary" fullWidth onClick={() => setMakeupModal({ open: false })}>취소</Button>
-              <Button fullWidth onClick={sendMakeupNotification} disabled={sending || !makeupDate}>{sending ? '발송 중...' : '보강 확정 & 알림'}</Button>
+              <Button fullWidth onClick={sendMakeupNotification} disabled={sending || !makeupDate}>{sending ? '발송 중...' : '보강 확정 & 보호자 알림'}</Button>
             </div>
           </div>
         )}

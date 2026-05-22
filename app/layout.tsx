@@ -5,13 +5,13 @@ import AuthCheck from '@/components/AuthCheck'
 import { BranchProvider } from '@/lib/BranchContext'
 
 export const metadata: Metadata = {
-  title: "EL'S MUSIC",
-  description: '음악학원 출결 관리 앱',
+  title: '링키영어',
+  description: '링키영어 율현점 출결 관리 앱',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: "EL'S MUSIC",
+    title: '링키영어',
   },
 }
 
@@ -19,7 +19,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#7c3aed',
+  themeColor: '#F4547A',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

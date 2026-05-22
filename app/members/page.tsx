@@ -7,7 +7,7 @@ import Badge from '@/components/ui/Badge'
 import { calculateAge, formatCurrency } from '@/lib/utils'
 import { useBranch, SUBJECTS, Teacher } from '@/lib/BranchContext'
 
-const SUBJECT_TABS = SUBJECTS.map(s => ({ id: s.id, name: s.name, variant: s.variant, color: s.color }))
+const ENGLISH_SUBJECT = SUBJECTS[0]
 
 function calcTenure(startDate: string): string {
   const start = new Date(startDate)
@@ -22,41 +22,31 @@ function calcTenure(startDate: string): string {
 
 interface TeacherFormData {
   name: string
-  subject_id: string
   monthly_salary: string
   start_date: string
   assignedStudentIds: string[]
 }
-const EMPTY_FORM: TeacherFormData = { name: '', subject_id: '1', monthly_salary: '', start_date: '', assignedStudentIds: [] }
+const EMPTY_FORM: TeacherFormData = { name: '', monthly_salary: '', start_date: '', assignedStudentIds: [] }
 
 export default function MembersPage() {
   const { students, teachers, selectedBranch, addTeacher, updateTeacher, deleteTeacher } = useBranch()
-  const branchLabel = selectedBranch.slice(0, 2)
 
   const [activeTab, setActiveTab] = useState<'students' | 'teachers'>('students')
 
-  // Students state
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<'all' | 'adult' | 'minor'>('all')
 
-  // Teachers state
-  const [activeSubjectId, setActiveSubjectId] = useState(SUBJECTS[0].id)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<TeacherFormData>(EMPTY_FORM)
   const [formError, setFormError] = useState('')
 
-  const filteredStudents = students.filter(s => {
-    const matchSearch = s.name.includes(search) || s.phone.includes(search)
-    const matchFilter = filter === 'all' || (filter === 'adult' ? s.is_adult : !s.is_adult)
-    return matchSearch && matchFilter
-  })
-
-  const filteredTeachers = teachers.filter(t => t.subject_id === activeSubjectId)
+  const filteredStudents = students.filter(s =>
+    s.name.includes(search) || s.phone.includes(search)
+  )
 
   function openAddTeacher() {
     setEditingId(null)
-    setForm({ ...EMPTY_FORM, subject_id: activeSubjectId })
+    setForm(EMPTY_FORM)
     setFormError('')
     setModalOpen(true)
   }
@@ -65,7 +55,6 @@ export default function MembersPage() {
     setEditingId(t.id)
     setForm({
       name: t.name,
-      subject_id: t.subject_id,
       monthly_salary: String(t.monthly_salary),
       start_date: t.start_date,
       assignedStudentIds: t.assignedStudentIds ?? [],
@@ -92,12 +81,11 @@ export default function MembersPage() {
     if (!form.start_date) { setFormError('입사일을 입력해주세요.'); return }
     const salary = Number(form.monthly_salary)
     if (!salary || salary <= 0) { setFormError('월 급여를 입력해주세요.'); return }
-    const subj = SUBJECTS.find(s => s.id === form.subject_id)!
     const data = {
       name: form.name.trim(),
-      subject_id: form.subject_id,
-      subject: subj.name,
-      subjectVariant: subj.variant as Teacher['subjectVariant'],
+      subject_id: ENGLISH_SUBJECT.id,
+      subject: ENGLISH_SUBJECT.name,
+      subjectVariant: ENGLISH_SUBJECT.variant as Teacher['subjectVariant'],
       monthly_salary: salary,
       start_date: form.start_date,
       assignedStudentIds: form.assignedStudentIds,
@@ -108,12 +96,10 @@ export default function MembersPage() {
       addTeacher(data)
     }
     setModalOpen(false)
-    setActiveSubjectId(form.subject_id)
   }
 
   return (
     <div style={{ background: 'var(--c-subtle)', minHeight: '100%' }}>
-      {/* Header */}
       <div className="w-header px-4 flex items-center justify-between">
         <div>
           <h1 className="text-base font-bold text-w-heading">인원</h1>
@@ -147,7 +133,7 @@ export default function MembersPage() {
                 boxShadow: activeTab === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
               }}
             >
-              {tab === 'students' ? '수강생' : '강사'}
+              {tab === 'students' ? '학생' : '강사'}
             </button>
           ))}
         </div>
@@ -168,30 +154,13 @@ export default function MembersPage() {
             />
           </div>
 
-          <div className="flex gap-2">
-            {([['all', '전체'], ['minor', '미성년'], ['adult', '성인']] as const).map(([val, label]) => (
-              <button
-                key={val}
-                onClick={() => setFilter(val)}
-                className="px-4 py-1.5 rounded-pill text-sm font-medium t-base"
-                style={{
-                  background: filter === val ? 'var(--c-primary)' : 'var(--c-surface)',
-                  color: filter === val ? 'white' : 'var(--c-secondary)',
-                  border: filter === val ? 'none' : '1px solid var(--c-border)',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
           <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>{filteredStudents.length}명</p>
 
           {filteredStudents.length === 0 ? (
             <div className="w-card text-center py-12">
-              <p className="text-sm" style={{ color: 'var(--c-secondary)' }}>수강생이 없습니다</p>
+              <p className="text-sm" style={{ color: 'var(--c-secondary)' }}>학생이 없습니다</p>
               <Link href="/students/new" className="text-sm font-medium mt-2 inline-block" style={{ color: 'var(--c-primary)' }}>
-                + 수강생 등록하기
+                + 학생 등록하기
               </Link>
             </div>
           ) : (
@@ -203,14 +172,13 @@ export default function MembersPage() {
                   className="flex items-center px-4 py-3 t-base hover:bg-w-subtle"
                   style={{ borderBottom: idx < filteredStudents.length - 1 ? '1px solid var(--c-border)' : 'none' }}
                 >
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold mr-3 flex-shrink-0" style={{ background: 'rgba(124,58,237,0.1)', color: 'var(--c-primary)', fontSize: '11px' }}>
-                    {branchLabel}
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold mr-3 flex-shrink-0 text-sm" style={{ background: 'rgba(244,84,122,0.1)', color: 'var(--c-primary)' }}>
+                    {s.name[0]}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-sm font-semibold text-w-heading">{s.name}</span>
-                      <Badge variant={s.is_adult ? 'adult' : 'minor'}>{s.is_adult ? '성인' : '미성년'}</Badge>
-                      <Badge variant={s.subjectVariant}>{s.subject}</Badge>
+                      <Badge variant="english">{s.subject}</Badge>
                     </div>
                     <div className="text-xs mt-0.5" style={{ color: 'var(--c-secondary)' }}>만 {calculateAge(s.birth_date)}세 · {s.phone}</div>
                   </div>
@@ -229,46 +197,35 @@ export default function MembersPage() {
       {/* Teachers Tab */}
       {activeTab === 'teachers' && (
         <div>
-          <div className="flex px-4 pt-3 gap-2 overflow-x-auto" style={{ borderBottom: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
-            {SUBJECT_TABS.map(tab => {
-              const active = tab.id === activeSubjectId
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveSubjectId(tab.id)}
-                  className="flex-shrink-0 pb-2.5 px-1 text-sm font-semibold t-base"
-                  style={{
-                    color: active ? tab.color : 'var(--c-secondary)',
-                    borderBottom: active ? `2px solid ${tab.color}` : '2px solid transparent',
-                  }}
-                >
-                  {tab.name}
-                </button>
-              )
-            })}
+          <div className="px-4 pt-3 pb-2" style={{ borderBottom: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
+            <span
+              className="inline-flex items-center px-3 py-1.5 rounded-pill text-sm font-semibold"
+              style={{ background: 'rgba(91,196,192,0.15)', color: '#5BC4C0', border: '1.5px solid #5BC4C0' }}
+            >
+              영어
+            </span>
           </div>
 
           <div className="px-4 py-4 space-y-3">
-            {filteredTeachers.length === 0 ? (
+            {teachers.length === 0 ? (
               <div className="w-card py-14 text-center">
                 <p className="text-sm" style={{ color: 'var(--c-secondary)' }}>등록된 강사가 없습니다</p>
               </div>
             ) : (
-              filteredTeachers.map(teacher => {
-                const subjDef = SUBJECTS.find(s => s.id === teacher.subject_id)!
+              teachers.map(teacher => {
                 const assignedStudents = students.filter(s => (teacher.assignedStudentIds ?? []).includes(s.id))
                 const annualSalary = teacher.monthly_salary * 12
                 return (
                   <div key={teacher.id} className="w-card">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold flex-shrink-0" style={{ background: subjDef.color + '18', color: subjDef.color }}>
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold flex-shrink-0" style={{ background: 'rgba(91,196,192,0.15)', color: '#5BC4C0' }}>
                           {teacher.name[0]}
                         </div>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-base font-bold text-w-heading">{teacher.name}</span>
-                            <Badge variant={teacher.subjectVariant}>{teacher.subject}</Badge>
+                            <Badge variant="english">{teacher.subject}</Badge>
                           </div>
                           <p className="text-xs mt-0.5" style={{ color: 'var(--c-secondary)' }}>
                             근속 {calcTenure(teacher.start_date)} · {teacher.start_date} 입사
@@ -298,13 +255,13 @@ export default function MembersPage() {
 
                     <div>
                       <div className="flex items-center gap-1.5 mb-2">
-                        <p className="text-xs font-semibold" style={{ color: 'var(--c-secondary)' }}>담당 수강생</p>
-                        <span className="text-xs font-bold px-1.5 py-0.5 rounded-pill" style={{ background: subjDef.color + '18', color: subjDef.color }}>
+                        <p className="text-xs font-semibold" style={{ color: 'var(--c-secondary)' }}>담당 학생</p>
+                        <span className="text-xs font-bold px-1.5 py-0.5 rounded-pill" style={{ background: 'rgba(91,196,192,0.15)', color: '#5BC4C0' }}>
                           {assignedStudents.length}명
                         </span>
                       </div>
                       {assignedStudents.length === 0 ? (
-                        <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>담당 수강생 없음</p>
+                        <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>담당 학생 없음</p>
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
                           {assignedStudents.map(st => (
@@ -323,12 +280,11 @@ export default function MembersPage() {
         </div>
       )}
 
-      {/* Bottom action button — changes by active tab */}
       <div className="px-4 pb-6">
         {activeTab === 'students' ? (
           <Link href="/students/new">
             <div className="w-full py-3 rounded-pill text-sm font-semibold text-center t-base hover:opacity-80" style={{ background: 'var(--c-surface)', color: 'var(--c-primary)', border: '1.5px solid var(--c-primary)' }}>
-              + 수강생 등록하기
+              + 학생 등록하기
             </div>
           </Link>
         ) : (
@@ -360,9 +316,10 @@ export default function MembersPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-w-heading mb-1.5">담당 과목</label>
-                <select className="w-input" value={form.subject_id} onChange={e => setForm(f => ({ ...f, subject_id: e.target.value }))}>
-                  {SUBJECTS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                <div className="w-input flex items-center gap-2" style={{ background: 'var(--c-subtle)', cursor: 'default' }}>
+                  <Badge variant="english">영어</Badge>
+                  <span className="text-sm" style={{ color: 'var(--c-secondary)' }}>링키영어 전담</span>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-w-heading mb-1.5">월 급여 (원)</label>
@@ -373,15 +330,14 @@ export default function MembersPage() {
                 <input className="w-input" type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
               </div>
 
-              {/* Student Assignment */}
               <div>
                 <label className="block text-sm font-medium text-w-heading mb-1.5">
-                  담당 수강생
+                  담당 학생
                   <span className="ml-2 text-xs font-normal" style={{ color: 'var(--c-secondary)' }}>({form.assignedStudentIds.length}명 선택)</span>
                 </label>
                 <div className="rounded-input overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
                   {students.length === 0 ? (
-                    <p className="px-3 py-3 text-sm" style={{ color: 'var(--c-secondary)' }}>등록된 수강생이 없습니다</p>
+                    <p className="px-3 py-3 text-sm" style={{ color: 'var(--c-secondary)' }}>등록된 학생이 없습니다</p>
                   ) : (
                     students.map((st, idx) => {
                       const checked = form.assignedStudentIds.includes(st.id)
@@ -399,7 +355,7 @@ export default function MembersPage() {
                             style={{ accentColor: 'var(--c-primary)' }}
                           />
                           <span className="text-sm font-medium text-w-body">{st.name}</span>
-                          <Badge variant={st.subjectVariant}>{st.subject}</Badge>
+                          <Badge variant="english">{st.subject}</Badge>
                         </label>
                       )
                     })

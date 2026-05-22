@@ -9,12 +9,12 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        'w-primary': '#7c3aed',
-        'w-primary-hover': '#6d28d9',
+        'w-primary': '#F4547A',
+        'w-primary-hover': '#e03d66',
         'w-heading': '#171719',
         'w-body': '#333333',
         'w-surface': '#FFFFFF',
-        'w-subtle': '#F7F7F8',
+        'w-subtle': '#FFF5F7',
         'w-error': '#F0483C',
         'w-success': '#00B97C',
         'w-warning': '#FFAB00',

@@ -3,13 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --c-primary: #7c3aed;
-  --c-primary-hover: #6d28d9;
+  --c-primary: #F4547A;
+  --c-primary-hover: #e03d66;
+  --c-secondary-accent: #5BC4C0;
   --c-heading: #171719;
   --c-body: #333333;
   --c-secondary: rgba(55, 56, 60, 0.61);
   --c-surface: #FFFFFF;
-  --c-subtle: #F7F7F8;
+  --c-subtle: #FFF5F7;
   --c-border: rgba(112, 115, 124, 0.16);
   --c-error: #F0483C;
   --c-success: #00B97C;
