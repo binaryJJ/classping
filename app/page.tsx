@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronRight, UserPlus, CalendarCheck, Calendar, Calculator, ChevronDown, MapPin, Plus, Trash2, X, Music, LogOut } from 'lucide-react'
+import { ChevronRight, UserPlus, CalendarCheck, Calendar, Calculator, ChevronDown, MapPin, Plus, Trash2, X, Music, LogOut, BarChart2, Wallet, Users } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 import { useBranch, SUBJECTS } from '@/lib/BranchContext'
 import { AttendanceStatus } from '@/lib/types'
+import { calculateRefund } from '@/lib/utils'
 
 const DOW = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -58,8 +59,17 @@ export default function DashboardPage() {
   )
 
   const totalStudents = students.length
-  const adultCount = students.filter(s => s.is_adult).length
-  const minorCount = totalStudents - adultCount
+
+  // 통계 카드 계산
+  const totalClasses = students.reduce((sum, s) => sum + s.totalClasses, 0)
+  const totalAbsent = students.reduce((sum, s) => sum + s.absentCount, 0)
+  const attendanceRate = totalClasses > 0 ? Math.round(((totalClasses - totalAbsent) / totalClasses) * 100) : 0
+  const totalRefund = students.reduce((sum, s) => sum + calculateRefund(s.monthly_fee, s.totalClasses, s.absentCount), 0)
+
+  // 오늘 출결 현황 (미처리: 아직 체크 전 상태)
+  const presentCount = 0
+  const absentTodayCount = 0
+  const pendingCount = todayStudents.length
 
   return (
     <div style={{ background: 'var(--c-subtle)', minHeight: '100%' }}>
@@ -134,25 +144,56 @@ export default function DashboardPage() {
       </div>
 
       <div className="px-4 space-y-4 py-4">
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: '전체 학생', value: `${totalStudents}명`, color: 'var(--c-primary)' },
-            { label: '성인', value: `${adultCount}명`, color: 'var(--c-success)' },
-            { label: '미성년', value: `${minorCount}명`, color: 'var(--c-warning)' },
-          ].map(s => (
-            <div key={s.label} className="w-card" style={{ padding: '12px' }}>
-              <div className="text-base font-bold leading-tight" style={{ color: s.color }}>{s.value}</div>
-              <div className="text-xs mt-1 leading-tight" style={{ color: 'var(--c-secondary)' }}>{s.label}</div>
+        {/* 통계 카드 3개 */}
+        <div className="grid grid-cols-3 gap-2.5">
+          <div className="w-card" style={{ padding: '12px 10px' }}>
+            <div className="w-7 h-7 rounded-input flex items-center justify-center mb-2" style={{ background: '#00B97C18' }}>
+              <BarChart2 size={15} color="var(--c-success)" strokeWidth={2} />
             </div>
-          ))}
+            <div className="text-base font-bold leading-tight" style={{ color: 'var(--c-success)' }}>{attendanceRate}%</div>
+            <div className="text-[11px] mt-0.5 leading-tight" style={{ color: 'var(--c-secondary)' }}>이번달 출석률</div>
+          </div>
+          <div className="w-card" style={{ padding: '12px 10px' }}>
+            <div className="w-7 h-7 rounded-input flex items-center justify-center mb-2" style={{ background: '#FFAB0018' }}>
+              <Wallet size={15} color="var(--c-warning)" strokeWidth={2} />
+            </div>
+            <div className="text-base font-bold leading-tight" style={{ color: 'var(--c-warning)' }}>
+              {totalRefund > 0 ? `${(totalRefund / 10000).toFixed(0)}만` : '0원'}
+            </div>
+            <div className="text-[11px] mt-0.5 leading-tight" style={{ color: 'var(--c-secondary)' }}>환불 예정</div>
+          </div>
+          <div className="w-card" style={{ padding: '12px 10px' }}>
+            <div className="w-7 h-7 rounded-input flex items-center justify-center mb-2" style={{ background: '#0ea5e918' }}>
+              <Users size={15} color="#0ea5e9" strokeWidth={2} />
+            </div>
+            <div className="text-base font-bold leading-tight" style={{ color: '#0ea5e9' }}>{totalStudents}명</div>
+            <div className="text-[11px] mt-0.5 leading-tight" style={{ color: 'var(--c-secondary)' }}>전체 수강생</div>
+          </div>
         </div>
 
-        {/* Today section */}
+        {/* 오늘 수업 섹션 */}
         <section>
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2.5">
             <h2 className="text-sm font-semibold text-w-heading">오늘 수업 ({todayStudents.length}명)</h2>
-            <Link href="/attendance" className="text-xs font-medium" style={{ color: 'var(--c-primary)' }}>출결 체크</Link>
+            <Link href="/attendance" className="text-xs font-medium flex items-center gap-0.5" style={{ color: 'var(--c-primary)' }}>
+              출결 관리 <ChevronRight size={13} />
+            </Link>
+          </div>
+
+          {/* 출석 현황 카드 3개 */}
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="rounded-card px-3 py-2.5 text-center" style={{ background: '#00B97C12', border: '1px solid #00B97C20' }}>
+              <div className="text-lg font-bold" style={{ color: 'var(--c-success)' }}>{presentCount}</div>
+              <div className="text-[11px] mt-0.5" style={{ color: 'var(--c-success)' }}>출석</div>
+            </div>
+            <div className="rounded-card px-3 py-2.5 text-center" style={{ background: '#F0483C12', border: '1px solid #F0483C20' }}>
+              <div className="text-lg font-bold" style={{ color: 'var(--c-error)' }}>{absentTodayCount}</div>
+              <div className="text-[11px] mt-0.5" style={{ color: 'var(--c-error)' }}>결석</div>
+            </div>
+            <div className="rounded-card px-3 py-2.5 text-center" style={{ background: 'var(--c-subtle)', border: '1px solid var(--c-border)' }}>
+              <div className="text-lg font-bold" style={{ color: 'var(--c-secondary)' }}>{pendingCount}</div>
+              <div className="text-[11px] mt-0.5" style={{ color: 'var(--c-secondary)' }}>미처리</div>
+            </div>
           </div>
 
           {todayStudents.length === 0 ? (
