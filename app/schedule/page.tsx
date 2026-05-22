@@ -23,7 +23,7 @@ interface DatePopup {
 }
 
 export default function SchedulePage() {
-  const { students, selectedBranch } = useBranch()
+  const { students, teachers, selectedBranch } = useBranch()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
@@ -36,7 +36,7 @@ export default function SchedulePage() {
   function prevMonth() { if (month === 0) { setYear(y => y - 1); setMonth(11) } else setMonth(m => m - 1) }
   function nextMonth() { if (month === 11) { setYear(y => y + 1); setMonth(0) } else setMonth(m => m + 1) }
 
-  const datePopupRows = datePopup
+  const datePopupRows = datePopup && datePopup.dayOfWeek !== 0
     ? SUBJECTS.flatMap(subj =>
         subj.dayOfWeek.includes(datePopup.dayOfWeek)
           ? students.filter(s => s.subject_id === subj.id).map(st => ({ subject: subj, student: st }))
@@ -86,16 +86,20 @@ export default function SchedulePage() {
               <div key={`e${i}`} className="min-h-10" style={{ background: 'var(--c-subtle)', borderRadius: '4px' }} />
             ))}
             {days.map(({ date, day, dayNum }) => {
-              const classesToday = SUBJECTS.filter(s => s.dayOfWeek.includes(day))
+              const isSunday = day === 0
+              const classesToday = isSunday ? [] : SUBJECTS.filter(s => s.dayOfWeek.includes(day))
               const isToday = date === today
               return (
                 <button
                   key={date}
-                  onClick={() => setDatePopup({ date, dayOfWeek: day })}
+                  disabled={isSunday}
+                  onClick={() => { if (!isSunday) setDatePopup({ date, dayOfWeek: day }) }}
                   className="min-h-10 p-0.5 rounded flex flex-col gap-0.5 text-left w-full t-base hover:bg-gray-50"
                   style={{
                     background: isToday ? 'rgba(124,58,237,0.05)' : 'transparent',
                     border: isToday ? '1px solid rgba(124,58,237,0.2)' : '1px solid transparent',
+                    opacity: isSunday ? 0.35 : 1,
+                    cursor: isSunday ? 'default' : 'pointer',
                   }}
                 >
                   <span
@@ -132,11 +136,20 @@ export default function SchedulePage() {
           <div className="space-y-2">
             {SUBJECTS.map(s => {
               const branchStudents = students.filter(st => st.subject_id === s.id)
+              const subjectTeachers = teachers.filter(t => t.subject_id === s.id)
               return (
                 <div key={s.id} className="w-card flex items-center justify-between" style={{ borderLeft: `3px solid ${s.color}`, paddingTop: '10px', paddingBottom: '10px' }}>
                   <div>
-                    <div className="text-sm font-bold text-w-heading">{s.name}</div>
-                    <div className="text-xs" style={{ color: 'var(--c-secondary)' }}>{s.teacherName} · {s.startTime}~{s.endTime}</div>
+                    <div className="text-sm font-bold text-w-heading mb-0.5">{s.name}</div>
+                    {subjectTeachers.length === 0 ? (
+                      <div className="text-xs" style={{ color: 'var(--c-secondary)' }}>{s.teacherName} · {s.startTime}~{s.endTime}</div>
+                    ) : (
+                      subjectTeachers.map(t => (
+                        <div key={t.id} className="text-xs" style={{ color: 'var(--c-secondary)' }}>
+                          {t.name} · {s.startTime}~{s.endTime}
+                        </div>
+                      ))
+                    )}
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-semibold text-w-heading">{branchStudents.length}명</div>

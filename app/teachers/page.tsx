@@ -68,6 +68,7 @@ export default function TeachersPage() {
       subjectVariant: subj.variant as Teacher['subjectVariant'],
       monthly_salary: salary,
       start_date: form.start_date,
+      assignedStudentIds: [] as string[],
     }
     if (editingId) {
       updateTeacher(editingId, data)

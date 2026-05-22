@@ -31,6 +31,7 @@ export interface Teacher {
   subjectVariant: 'guitar' | 'bass' | 'drums' | 'vocal'
   monthly_salary: number
   start_date: string
+  assignedStudentIds: string[]
 }
 
 export interface SubjectDef {
@@ -78,12 +79,12 @@ const ALL_STUDENTS: Record<string, BranchStudent[]> = {
 
 const INITIAL_TEACHERS: Record<string, Teacher[]> = {
   '위례점': [
-    { id: 'wt1', name: '김강사', subject_id: '1', subject: '기타', subjectVariant: 'guitar', monthly_salary: 2500000, start_date: '2023-03-01' },
-    { id: 'wt2', name: '이강사', subject_id: '3', subject: '드럼', subjectVariant: 'drums', monthly_salary: 2800000, start_date: '2024-01-15' },
+    { id: 'wt1', name: '김강사', subject_id: '1', subject: '기타', subjectVariant: 'guitar', monthly_salary: 2500000, start_date: '2023-03-01', assignedStudentIds: ['w1', 'w5', 'w9'] },
+    { id: 'wt2', name: '이강사', subject_id: '3', subject: '드럼', subjectVariant: 'drums', monthly_salary: 2800000, start_date: '2024-01-15', assignedStudentIds: ['w3', 'w7'] },
   ],
   '잠실점': [
-    { id: 'jt1', name: '박강사', subject_id: '4', subject: '보컬', subjectVariant: 'vocal', monthly_salary: 2600000, start_date: '2022-06-01' },
-    { id: 'jt2', name: '최강사', subject_id: '2', subject: '베이스', subjectVariant: 'bass', monthly_salary: 2400000, start_date: '2025-02-10' },
+    { id: 'jt1', name: '박강사', subject_id: '4', subject: '보컬', subjectVariant: 'vocal', monthly_salary: 2600000, start_date: '2022-06-01', assignedStudentIds: ['j2', 'j7'] },
+    { id: 'jt2', name: '최강사', subject_id: '2', subject: '베이스', subjectVariant: 'bass', monthly_salary: 2400000, start_date: '2025-02-10', assignedStudentIds: ['j4', 'j8'] },
   ],
 }
 
@@ -135,7 +136,7 @@ export function BranchProvider({ children }: { children: ReactNode }) {
   }
 
   function addTeacher(t: Omit<Teacher, 'id'>) {
-    const newT = { ...t, id: `t${Date.now()}` }
+    const newT = { ...t, id: `t${Date.now()}`, assignedStudentIds: t.assignedStudentIds ?? [] }
     setTeachersMap(prev => ({ ...prev, [selectedBranch]: [...(prev[selectedBranch] ?? []), newT] }))
   }
 

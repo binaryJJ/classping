@@ -25,8 +25,9 @@ interface TeacherFormData {
   subject_id: string
   monthly_salary: string
   start_date: string
+  assignedStudentIds: string[]
 }
-const EMPTY_FORM: TeacherFormData = { name: '', subject_id: '1', monthly_salary: '', start_date: '' }
+const EMPTY_FORM: TeacherFormData = { name: '', subject_id: '1', monthly_salary: '', start_date: '', assignedStudentIds: [] }
 
 export default function MembersPage() {
   const { students, teachers, selectedBranch, addTeacher, updateTeacher, deleteTeacher } = useBranch()
@@ -62,13 +63,28 @@ export default function MembersPage() {
 
   function openEditTeacher(t: Teacher) {
     setEditingId(t.id)
-    setForm({ name: t.name, subject_id: t.subject_id, monthly_salary: String(t.monthly_salary), start_date: t.start_date })
+    setForm({
+      name: t.name,
+      subject_id: t.subject_id,
+      monthly_salary: String(t.monthly_salary),
+      start_date: t.start_date,
+      assignedStudentIds: t.assignedStudentIds ?? [],
+    })
     setFormError('')
     setModalOpen(true)
   }
 
   function handleDeleteTeacher(t: Teacher) {
     if (confirm(`${t.name} 강사를 삭제할까요?`)) deleteTeacher(t.id)
+  }
+
+  function toggleStudent(id: string) {
+    setForm(f => ({
+      ...f,
+      assignedStudentIds: f.assignedStudentIds.includes(id)
+        ? f.assignedStudentIds.filter(sid => sid !== id)
+        : [...f.assignedStudentIds, id],
+    }))
   }
 
   function handleSubmitTeacher() {
@@ -84,6 +100,7 @@ export default function MembersPage() {
       subjectVariant: subj.variant as Teacher['subjectVariant'],
       monthly_salary: salary,
       start_date: form.start_date,
+      assignedStudentIds: form.assignedStudentIds,
     }
     if (editingId) {
       updateTeacher(editingId, data)
@@ -99,24 +116,17 @@ export default function MembersPage() {
       {/* Header */}
       <div className="w-header px-4 flex items-center justify-between">
         <div>
-          <h1 className="text-base font-bold text-w-heading">구성원</h1>
+          <h1 className="text-base font-bold text-w-heading">인원</h1>
           <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>{selectedBranch}</p>
         </div>
         {activeTab === 'students' ? (
           <Link href="/students/new">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center t-base hover:opacity-80"
-              style={{ background: 'var(--c-primary)' }}
-            >
+            <div className="w-8 h-8 rounded-full flex items-center justify-center t-base hover:opacity-80" style={{ background: 'var(--c-primary)' }}>
               <Plus size={18} color="white" strokeWidth={2.5} />
             </div>
           </Link>
         ) : (
-          <button
-            onClick={openAddTeacher}
-            className="w-8 h-8 rounded-full flex items-center justify-center t-base hover:opacity-80"
-            style={{ background: 'var(--c-primary)' }}
-          >
+          <button onClick={openAddTeacher} className="w-8 h-8 rounded-full flex items-center justify-center t-base hover:opacity-80" style={{ background: 'var(--c-primary)' }}>
             <Plus size={18} color="white" strokeWidth={2.5} />
           </button>
         )}
@@ -124,10 +134,7 @@ export default function MembersPage() {
 
       {/* Segment Control */}
       <div className="px-4 pt-3 pb-0">
-        <div
-          className="flex p-1 gap-1"
-          style={{ background: 'var(--c-subtle)', border: '1px solid var(--c-border)', borderRadius: '8px' }}
-        >
+        <div className="flex p-1 gap-1" style={{ background: 'var(--c-subtle)', border: '1px solid var(--c-border)', borderRadius: '8px' }}>
           {(['students', 'teachers'] as const).map(tab => (
             <button
               key={tab}
@@ -149,10 +156,7 @@ export default function MembersPage() {
       {/* Students Tab */}
       {activeTab === 'students' && (
         <div className="px-4 py-3 space-y-3">
-          <div
-            className="flex items-center gap-2 px-3 py-2.5 rounded-input"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
-          >
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-input" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
             <Search size={15} color="var(--c-secondary)" />
             <input
               type="search"
@@ -199,10 +203,7 @@ export default function MembersPage() {
                   className="flex items-center px-4 py-3 t-base hover:bg-w-subtle"
                   style={{ borderBottom: idx < filteredStudents.length - 1 ? '1px solid var(--c-border)' : 'none' }}
                 >
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center font-bold mr-3 flex-shrink-0"
-                    style={{ background: 'rgba(124,58,237,0.1)', color: 'var(--c-primary)', fontSize: '11px' }}
-                  >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold mr-3 flex-shrink-0" style={{ background: 'rgba(124,58,237,0.1)', color: 'var(--c-primary)', fontSize: '11px' }}>
                     {branchLabel}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -211,9 +212,7 @@ export default function MembersPage() {
                       <Badge variant={s.is_adult ? 'adult' : 'minor'}>{s.is_adult ? '성인' : '미성년'}</Badge>
                       <Badge variant={s.subjectVariant}>{s.subject}</Badge>
                     </div>
-                    <div className="text-xs mt-0.5" style={{ color: 'var(--c-secondary)' }}>
-                      만 {calculateAge(s.birth_date)}세 · {s.phone}
-                    </div>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--c-secondary)' }}>만 {calculateAge(s.birth_date)}세 · {s.phone}</div>
                   </div>
                   <div className="text-right mr-2">
                     <div className="text-sm font-semibold text-w-heading">{formatCurrency(s.monthly_fee)}</div>
@@ -230,10 +229,7 @@ export default function MembersPage() {
       {/* Teachers Tab */}
       {activeTab === 'teachers' && (
         <div>
-          <div
-            className="flex px-4 pt-3 gap-2 overflow-x-auto"
-            style={{ borderBottom: '1px solid var(--c-border)', background: 'var(--c-surface)' }}
-          >
+          <div className="flex px-4 pt-3 gap-2 overflow-x-auto" style={{ borderBottom: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
             {SUBJECT_TABS.map(tab => {
               const active = tab.id === activeSubjectId
               return (
@@ -256,23 +252,17 @@ export default function MembersPage() {
             {filteredTeachers.length === 0 ? (
               <div className="w-card py-14 text-center">
                 <p className="text-sm" style={{ color: 'var(--c-secondary)' }}>등록된 강사가 없습니다</p>
-                <button onClick={openAddTeacher} className="text-sm font-medium mt-2 inline-block" style={{ color: 'var(--c-primary)' }}>
-                  + 강사 등록하기
-                </button>
               </div>
             ) : (
               filteredTeachers.map(teacher => {
                 const subjDef = SUBJECTS.find(s => s.id === teacher.subject_id)!
-                const assignedStudents = students.filter(s => s.subject_id === teacher.subject_id)
+                const assignedStudents = students.filter(s => (teacher.assignedStudentIds ?? []).includes(s.id))
                 const annualSalary = teacher.monthly_salary * 12
                 return (
                   <div key={teacher.id} className="w-card">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div
-                          className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold flex-shrink-0"
-                          style={{ background: subjDef.color + '18', color: subjDef.color }}
-                        >
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold flex-shrink-0" style={{ background: subjDef.color + '18', color: subjDef.color }}>
                           {teacher.name[0]}
                         </div>
                         <div>
@@ -309,10 +299,7 @@ export default function MembersPage() {
                     <div>
                       <div className="flex items-center gap-1.5 mb-2">
                         <p className="text-xs font-semibold" style={{ color: 'var(--c-secondary)' }}>담당 수강생</p>
-                        <span
-                          className="text-xs font-bold px-1.5 py-0.5 rounded-pill"
-                          style={{ background: subjDef.color + '18', color: subjDef.color }}
-                        >
+                        <span className="text-xs font-bold px-1.5 py-0.5 rounded-pill" style={{ background: subjDef.color + '18', color: subjDef.color }}>
                           {assignedStudents.length}명
                         </span>
                       </div>
@@ -321,11 +308,7 @@ export default function MembersPage() {
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
                           {assignedStudents.map(st => (
-                            <span
-                              key={st.id}
-                              className="text-xs font-medium px-2.5 py-1 rounded-pill"
-                              style={{ background: 'var(--c-subtle)', color: 'var(--c-body)', border: '1px solid var(--c-border)' }}
-                            >
+                            <span key={st.id} className="text-xs font-medium px-2.5 py-1 rounded-pill" style={{ background: 'var(--c-subtle)', color: 'var(--c-body)', border: '1px solid var(--c-border)' }}>
                               {st.name}
                             </span>
                           ))}
@@ -340,61 +323,90 @@ export default function MembersPage() {
         </div>
       )}
 
-      {/* Always-visible teacher registration button */}
+      {/* Bottom action button — changes by active tab */}
       <div className="px-4 pb-6">
-        <button
-          onClick={() => { setActiveTab('teachers'); openAddTeacher() }}
-          className="w-full py-3 rounded-pill text-sm font-semibold t-base hover:opacity-80"
-          style={{
-            background: 'var(--c-surface)',
-            color: 'var(--c-primary)',
-            border: '1.5px solid var(--c-primary)',
-          }}
-        >
-          + 강사 등록하기
-        </button>
+        {activeTab === 'students' ? (
+          <Link href="/students/new">
+            <div className="w-full py-3 rounded-pill text-sm font-semibold text-center t-base hover:opacity-80" style={{ background: 'var(--c-surface)', color: 'var(--c-primary)', border: '1.5px solid var(--c-primary)' }}>
+              + 수강생 등록하기
+            </div>
+          </Link>
+        ) : (
+          <button
+            onClick={openAddTeacher}
+            className="w-full py-3 rounded-pill text-sm font-semibold t-base hover:opacity-80"
+            style={{ background: 'var(--c-surface)', color: 'var(--c-primary)', border: '1.5px solid var(--c-primary)' }}
+          >
+            + 강사 등록하기
+          </button>
+        )}
       </div>
 
       {/* Teacher Add/Edit Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setModalOpen(false)} />
-          <div className="relative w-full max-w-md rounded-t-2xl" style={{ background: 'var(--c-surface)' }}>
+          <div className="relative w-full max-w-md rounded-t-2xl overflow-hidden" style={{ background: 'var(--c-surface)', maxHeight: '90vh' }}>
             <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: '1px solid var(--c-border)' }}>
               <h2 className="text-base font-bold text-w-heading">{editingId ? '강사 수정' : '강사 등록'}</h2>
               <button onClick={() => setModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-w-subtle">
                 <X size={18} color="var(--c-secondary)" />
               </button>
             </div>
-            <div className="p-4 space-y-4">
+            <div className="overflow-y-auto p-4 space-y-4" style={{ maxHeight: 'calc(90vh - 60px)' }}>
               <div>
                 <label className="block text-sm font-medium text-w-heading mb-1.5">이름</label>
                 <input className="w-input" placeholder="강사 이름" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-w-heading mb-1.5">담당 과목</label>
-                <select
-                  className="w-input"
-                  value={form.subject_id}
-                  onChange={e => setForm(f => ({ ...f, subject_id: e.target.value }))}
-                >
+                <select className="w-input" value={form.subject_id} onChange={e => setForm(f => ({ ...f, subject_id: e.target.value }))}>
                   {SUBJECTS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-w-heading mb-1.5">월 급여 (원)</label>
-                <input
-                  className="w-input"
-                  type="number"
-                  placeholder="2500000"
-                  value={form.monthly_salary}
-                  onChange={e => setForm(f => ({ ...f, monthly_salary: e.target.value }))}
-                />
+                <input className="w-input" type="number" placeholder="2500000" value={form.monthly_salary} onChange={e => setForm(f => ({ ...f, monthly_salary: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-w-heading mb-1.5">입사일</label>
                 <input className="w-input" type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
               </div>
+
+              {/* Student Assignment */}
+              <div>
+                <label className="block text-sm font-medium text-w-heading mb-1.5">
+                  담당 수강생
+                  <span className="ml-2 text-xs font-normal" style={{ color: 'var(--c-secondary)' }}>({form.assignedStudentIds.length}명 선택)</span>
+                </label>
+                <div className="rounded-input overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
+                  {students.length === 0 ? (
+                    <p className="px-3 py-3 text-sm" style={{ color: 'var(--c-secondary)' }}>등록된 수강생이 없습니다</p>
+                  ) : (
+                    students.map((st, idx) => {
+                      const checked = form.assignedStudentIds.includes(st.id)
+                      return (
+                        <label
+                          key={st.id}
+                          className="flex items-center gap-3 px-3 py-2.5 cursor-pointer t-base hover:bg-w-subtle"
+                          style={{ borderBottom: idx < students.length - 1 ? '1px solid var(--c-border)' : 'none' }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleStudent(st.id)}
+                            className="w-4 h-4 rounded"
+                            style={{ accentColor: 'var(--c-primary)' }}
+                          />
+                          <span className="text-sm font-medium text-w-body">{st.name}</span>
+                          <Badge variant={st.subjectVariant}>{st.subject}</Badge>
+                        </label>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+
               {formError && <p className="text-xs" style={{ color: 'var(--c-error)' }}>{formError}</p>}
               <button
                 onClick={handleSubmitTeacher}

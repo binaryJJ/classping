@@ -167,8 +167,15 @@ export default function AttendancePage() {
               const dot = getDotColor(date, day)
               const holiday = KR_HOLIDAYS_2026[date]
               const isHoliday = day === 0 || !!holiday
+              const isSunday = day === 0
               return (
-                <button key={date} onClick={() => setSelectedDate(date)} className="flex flex-col items-center py-1 min-h-10">
+                <button
+                  key={date}
+                  onClick={() => { if (!isSunday) setSelectedDate(date) }}
+                  disabled={isSunday}
+                  className="flex flex-col items-center py-1 min-h-10"
+                  style={{ cursor: isSunday ? 'default' : 'pointer', opacity: isSunday ? 0.35 : 1 }}
+                >
                   <span
                     className="w-7 h-7 flex items-center justify-center rounded-full text-xs t-base"
                     style={{
@@ -179,10 +186,10 @@ export default function AttendancePage() {
                   >
                     {new Date(date + 'T12:00:00').getDate()}
                   </span>
-                  {holiday && !isSelected && (
+                  {holiday && !isSelected && !isSunday && (
                     <span className="text-[7px] leading-tight text-center w-full truncate px-0.5" style={{ color: 'var(--c-error)' }}>{holiday}</span>
                   )}
-                  {dot && !isSelected && <div className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ background: dot }} />}
+                  {dot && !isSelected && !isSunday && <div className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ background: dot }} />}
                 </button>
               )
             })}

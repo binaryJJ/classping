@@ -6,7 +6,7 @@ import { Home, Users, CalendarCheck, Calendar, CreditCard } from 'lucide-react'
 
 const tabs = [
   { href: '/', label: '홈', Icon: Home },
-  { href: '/members', label: '구성원', Icon: Users },
+  { href: '/members', label: '인원', Icon: Users },
   { href: '/attendance', label: '출결', Icon: CalendarCheck },
   { href: '/schedule', label: '시간표', Icon: Calendar },
   { href: '/settlement', label: '정산', Icon: CreditCard },
