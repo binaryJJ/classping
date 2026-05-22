@@ -9,18 +9,24 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: '#f5f3ff',
-          100: '#ede9fe',
-          200: '#ddd6fe',
-          300: '#c4b5fd',
-          400: '#a78bfa',
-          500: '#8b5cf6',
-          600: '#7c3aed',
-          700: '#6d28d9',
-          800: '#5b21b6',
-          900: '#4c1d95',
-        },
+        'w-primary': '#7c3aed',
+        'w-primary-hover': '#6d28d9',
+        'w-heading': '#171719',
+        'w-body': '#333333',
+        'w-surface': '#FFFFFF',
+        'w-subtle': '#F7F7F8',
+        'w-error': '#F0483C',
+        'w-success': '#00B97C',
+        'w-warning': '#FFAB00',
+        'kakao': '#FEE500',
+      },
+      fontFamily: {
+        sans: ['"Pretendard Variable"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+      },
+      borderRadius: {
+        'card': '12px',
+        'input': '8px',
+        'pill': '9999px',
       },
     },
   },

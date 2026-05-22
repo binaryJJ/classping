@@ -15,8 +15,29 @@ export function formatDateShort(dateStr: string): string {
   return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
 }
 
+export function toLocalDateString(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function getTodayString(): string {
-  return new Date().toISOString().split('T')[0]
+  return toLocalDateString(new Date())
+}
+
+export const KR_HOLIDAYS_2026: Record<string, string> = {
+  '2026-01-01': '신정',
+  '2026-02-16': '설날',
+  '2026-02-17': '설날',
+  '2026-02-18': '설날',
+  '2026-03-01': '삼일절',
+  '2026-05-05': '어린이날',
+  '2026-05-24': '부처님오신날',
+  '2026-06-06': '현충일',
+  '2026-08-15': '광복절',
+  '2026-10-03': '추석',
+  '2026-10-04': '추석',
+  '2026-10-05': '추석',
+  '2026-10-09': '한글날',
+  '2026-12-25': '크리스마스',
 }
 
 export function getMonthDays(year: number, month: number): Date[] {

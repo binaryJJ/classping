@@ -1,211 +1,200 @@
 'use client'
 
 import { useState } from 'react'
-import Modal from '@/components/ui/Modal'
-import Button from '@/components/ui/Button'
-import { getDayNameFull } from '@/lib/utils'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { useBranch, SUBJECTS } from '@/lib/BranchContext'
+import { toLocalDateString, getTodayString } from '@/lib/utils'
 
-interface ScheduleItem {
-  id: string
-  subjectId: string
-  subjectName: string
-  teacherName: string
-  dayOfWeek: number
-  startTime: string
-  endTime: string
-  studentCount: number
-  color: string
+const DOW_NAMES = ['일', '월', '화', '수', '목', '금', '토']
+
+function getDaysInMonth(year: number, month: number) {
+  const days: { date: string; day: number; dayNum: number }[] = []
+  const d = new Date(year, month, 1)
+  while (d.getMonth() === month) {
+    days.push({ date: toLocalDateString(d), day: d.getDay(), dayNum: d.getDate() })
+    d.setDate(d.getDate() + 1)
+  }
+  return days
 }
 
-const COLORS = ['bg-purple-100 border-purple-200 text-purple-800', 'bg-blue-100 border-blue-200 text-blue-800', 'bg-green-100 border-green-200 text-green-800', 'bg-orange-100 border-orange-200 text-orange-800']
-
-const DEMO_SCHEDULE: ScheduleItem[] = [
-  { id: '1', subjectId: 's1', subjectName: '수학', teacherName: '김수학', dayOfWeek: 1, startTime: '14:00', endTime: '15:30', studentCount: 5, color: COLORS[0] },
-  { id: '2', subjectId: 's1', subjectName: '수학', teacherName: '김수학', dayOfWeek: 3, startTime: '14:00', endTime: '15:30', studentCount: 5, color: COLORS[0] },
-  { id: '3', subjectId: 's1', subjectName: '수학', teacherName: '김수학', dayOfWeek: 5, startTime: '14:00', endTime: '15:30', studentCount: 5, color: COLORS[0] },
-  { id: '4', subjectId: 's2', subjectName: '영어', teacherName: '이영어', dayOfWeek: 2, startTime: '15:00', endTime: '16:30', studentCount: 4, color: COLORS[1] },
-  { id: '5', subjectId: 's2', subjectName: '영어', teacherName: '이영어', dayOfWeek: 4, startTime: '15:00', endTime: '16:30', studentCount: 4, color: COLORS[1] },
-  { id: '6', subjectId: 's3', subjectName: '과학', teacherName: '박과학', dayOfWeek: 2, startTime: '17:00', endTime: '18:30', studentCount: 3, color: COLORS[2] },
-  { id: '7', subjectId: 's4', subjectName: '국어', teacherName: '최국어', dayOfWeek: 6, startTime: '10:00', endTime: '11:30', studentCount: 6, color: COLORS[3] },
-]
-
-const DAYS = [0, 1, 2, 3, 4, 5, 6]
-const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
+interface DatePopup {
+  date: string
+  dayOfWeek: number
+}
 
 export default function SchedulePage() {
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [selectedItem, setSelectedItem] = useState<ScheduleItem | null>(null)
-  const [newSchedule, setNewSchedule] = useState({
-    subjectName: '', teacherName: '', dayOfWeek: '1', startTime: '09:00', endTime: '10:30',
-  })
+  const { students, selectedBranch } = useBranch()
+  const now = new Date()
+  const [year, setYear] = useState(now.getFullYear())
+  const [month, setMonth] = useState(now.getMonth())
+  const [datePopup, setDatePopup] = useState<DatePopup | null>(null)
 
-  const today = new Date().getDay()
+  const days = getDaysInMonth(year, month)
+  const firstDay = new Date(year, month, 1).getDay()
+  const today = getTodayString()
+
+  function prevMonth() { if (month === 0) { setYear(y => y - 1); setMonth(11) } else setMonth(m => m - 1) }
+  function nextMonth() { if (month === 11) { setYear(y => y + 1); setMonth(0) } else setMonth(m => m + 1) }
+
+  const datePopupRows = datePopup
+    ? SUBJECTS.flatMap(subj =>
+        subj.dayOfWeek.includes(datePopup.dayOfWeek)
+          ? students.filter(s => s.subject_id === subj.id).map(st => ({ subject: subj, student: st }))
+          : []
+      )
+    : []
 
   return (
-    <div>
-      <div className="bg-white px-4 pt-12 pb-4 border-b border-gray-100 sticky top-0 z-10">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">시간표</h1>
-          <Button size="sm" onClick={() => setShowAddModal(true)}>+ 수업 추가</Button>
+    <div style={{ background: 'var(--c-subtle)', minHeight: '100%' }}>
+      <div className="w-header px-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-base font-bold text-w-heading">시간표</h1>
+          <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>{selectedBranch}</p>
         </div>
-      </div>
-
-      {/* Weekly Grid */}
-      <div className="overflow-x-auto">
-        <div className="min-w-full px-4 py-4">
-          {/* Day headers */}
-          <div className="grid grid-cols-7 gap-1 mb-3">
-            {DAYS.map(day => (
-              <div
-                key={day}
-                className={`text-center py-2 rounded-lg text-xs font-semibold ${
-                  day === today ? 'bg-primary-600 text-white' :
-                  day === 0 ? 'text-red-400 bg-red-50' :
-                  day === 6 ? 'text-blue-400 bg-blue-50' :
-                  'text-gray-500 bg-gray-50'
-                }`}
-              >
-                {DAY_LABELS[day]}
-              </div>
-            ))}
-          </div>
-
-          {/* Schedule cells */}
-          <div className="grid grid-cols-7 gap-1">
-            {DAYS.map(day => {
-              const dayItems = DEMO_SCHEDULE.filter(s => s.dayOfWeek === day)
-              return (
-                <div key={day} className="min-h-48 flex flex-col gap-1">
-                  {dayItems.length === 0 ? (
-                    <div className="flex-1 border border-dashed border-gray-200 rounded-lg" />
-                  ) : (
-                    dayItems.map(item => (
-                      <button
-                        key={item.id}
-                        onClick={() => setSelectedItem(item)}
-                        className={`text-left p-1.5 rounded-lg border text-[10px] leading-tight ${item.color} hover:opacity-80 transition-opacity`}
-                      >
-                        <div className="font-bold truncate">{item.subjectName}</div>
-                        <div className="opacity-70 truncate">{item.startTime}</div>
-                        <div className="opacity-60 truncate">~{item.endTime}</div>
-                        <div className="mt-0.5 opacity-70">{item.studentCount}명</div>
-                      </button>
-                    ))
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div className="px-4 pb-4">
-        <h3 className="text-xs font-semibold text-gray-500 mb-2">과목 목록</h3>
-        <div className="space-y-2">
-          {Array.from(new Map(DEMO_SCHEDULE.map(s => [s.subjectId, s] as [string, ScheduleItem])).values()).map(item => (
-            <div key={item.subjectId} className={`flex items-center justify-between p-3 rounded-xl border ${item.color}`}>
-              <div>
-                <span className="font-semibold text-sm">{item.subjectName}</span>
-                <span className="text-xs ml-2 opacity-70">· {item.teacherName}</span>
-              </div>
-              <div className="text-xs opacity-70">
-                {DEMO_SCHEDULE.filter(s => s.subjectId === item.subjectId).map(s => DAY_LABELS[s.dayOfWeek]).join(', ')}요일
-              </div>
+        <div className="flex gap-2.5 text-xs">
+          {SUBJECTS.map(s => (
+            <div key={s.id} className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full" style={{ background: s.color }} />
+              <span style={{ color: 'var(--c-secondary)' }}>{s.name}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Detail Modal */}
-      <Modal
-        isOpen={!!selectedItem}
-        onClose={() => setSelectedItem(null)}
-        title="수업 상세"
-      >
-        {selectedItem && (
-          <div className="space-y-4">
-            <div className={`p-4 rounded-xl border ${selectedItem.color}`}>
-              <div className="text-xl font-bold mb-1">{selectedItem.subjectName}</div>
-              <div className="text-sm opacity-80">담당: {selectedItem.teacherName}</div>
-            </div>
-            <div className="space-y-2.5 text-sm">
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-500">요일</span>
-                <span className="font-medium">{getDayNameFull(selectedItem.dayOfWeek)}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-500">시간</span>
-                <span className="font-medium">{selectedItem.startTime} ~ {selectedItem.endTime}</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-gray-500">수강생 수</span>
-                <span className="font-medium">{selectedItem.studentCount}명</span>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="secondary" fullWidth onClick={() => setSelectedItem(null)}>닫기</Button>
-              <Button variant="danger" fullWidth onClick={() => { setSelectedItem(null); alert('삭제 기능은 Supabase 연동 후 활성화됩니다') }}>삭제</Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      <div className="px-4 py-4 space-y-4">
+        {/* Month nav */}
+        <div className="flex items-center justify-between">
+          <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-w-subtle t-base">
+            <ChevronLeft size={20} color="var(--c-primary)" />
+          </button>
+          <span className="text-base font-bold text-w-heading">{year}년 {month + 1}월</span>
+          <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-w-subtle t-base">
+            <ChevronRight size={20} color="var(--c-primary)" />
+          </button>
+        </div>
 
-      {/* Add Modal */}
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="수업 추가">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">과목명 *</label>
-            <input
-              type="text"
-              value={newSchedule.subjectName}
-              onChange={e => setNewSchedule(p => ({ ...p, subjectName: e.target.value }))}
-              placeholder="수학"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400"
-            />
+        {/* Calendar */}
+        <div className="w-card" style={{ padding: '12px', overflowX: 'auto' }}>
+          <div className="grid grid-cols-7 mb-1" style={{ minWidth: '280px' }}>
+            {DOW_NAMES.map((d, i) => (
+              <div key={d} className="text-center text-xs font-semibold py-1" style={{ color: i === 0 ? 'var(--c-error)' : i === 6 ? 'var(--c-primary)' : 'var(--c-secondary)' }}>{d}</div>
+            ))}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">담당 선생님 *</label>
-            <input
-              type="text"
-              value={newSchedule.teacherName}
-              onChange={e => setNewSchedule(p => ({ ...p, teacherName: e.target.value }))}
-              placeholder="홍길동"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">요일</label>
-            <select
-              value={newSchedule.dayOfWeek}
-              onChange={e => setNewSchedule(p => ({ ...p, dayOfWeek: e.target.value }))}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400"
-            >
-              {DAYS.map(d => <option key={d} value={d}>{getDayNameFull(d)}</option>)}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">시작 시간</label>
-              <input type="time" value={newSchedule.startTime} onChange={e => setNewSchedule(p => ({ ...p, startTime: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">종료 시간</label>
-              <input type="time" value={newSchedule.endTime} onChange={e => setNewSchedule(p => ({ ...p, endTime: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400" />
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" fullWidth onClick={() => setShowAddModal(false)}>취소</Button>
-            <Button fullWidth onClick={() => {
-              if (!newSchedule.subjectName || !newSchedule.teacherName) { alert('필수 항목을 입력해주세요'); return }
-              alert('수업이 추가되었습니다! (Supabase 연동 후 저장됩니다)')
-              setShowAddModal(false)
-            }}>추가</Button>
+
+          <div className="grid grid-cols-7 gap-px" style={{ minWidth: '280px' }}>
+            {Array.from({ length: firstDay }).map((_, i) => (
+              <div key={`e${i}`} className="min-h-10" style={{ background: 'var(--c-subtle)', borderRadius: '4px' }} />
+            ))}
+            {days.map(({ date, day, dayNum }) => {
+              const classesToday = SUBJECTS.filter(s => s.dayOfWeek.includes(day))
+              const isToday = date === today
+              return (
+                <button
+                  key={date}
+                  onClick={() => setDatePopup({ date, dayOfWeek: day })}
+                  className="min-h-10 p-0.5 rounded flex flex-col gap-0.5 text-left w-full t-base hover:bg-gray-50"
+                  style={{
+                    background: isToday ? 'rgba(124,58,237,0.05)' : 'transparent',
+                    border: isToday ? '1px solid rgba(124,58,237,0.2)' : '1px solid transparent',
+                  }}
+                >
+                  <span
+                    className="text-[10px] font-semibold w-5 h-5 flex items-center justify-center rounded-full mx-auto"
+                    style={{
+                      background: isToday ? 'var(--c-primary)' : 'transparent',
+                      color: isToday ? '#fff' : day === 0 ? 'var(--c-error)' : day === 6 ? 'var(--c-primary)' : 'var(--c-body)',
+                    }}
+                  >
+                    {dayNum}
+                  </span>
+                  {classesToday.map(cls => {
+                    const count = students.filter(s => s.subject_id === cls.id).length
+                    return (
+                      <div
+                        key={cls.id}
+                        className="w-full rounded px-0.5 py-px"
+                        style={{ background: cls.color + '18', borderLeft: `2px solid ${cls.color}` }}
+                      >
+                        <div className="text-[9px] font-bold leading-tight truncate" style={{ color: cls.color }}>{cls.name}</div>
+                        <div className="text-[8px] leading-tight" style={{ color: 'var(--c-secondary)' }}>{count}명</div>
+                      </div>
+                    )
+                  })}
+                </button>
+              )
+            })}
           </div>
         </div>
-      </Modal>
+
+        {/* Subject legend */}
+        <section>
+          <p className="text-xs font-semibold mb-2 px-1" style={{ color: 'var(--c-secondary)' }}>강좌 목록</p>
+          <div className="space-y-2">
+            {SUBJECTS.map(s => {
+              const branchStudents = students.filter(st => st.subject_id === s.id)
+              return (
+                <div key={s.id} className="w-card flex items-center justify-between" style={{ borderLeft: `3px solid ${s.color}`, paddingTop: '10px', paddingBottom: '10px' }}>
+                  <div>
+                    <div className="text-sm font-bold text-w-heading">{s.name}</div>
+                    <div className="text-xs" style={{ color: 'var(--c-secondary)' }}>{s.teacherName} · {s.startTime}~{s.endTime}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-w-heading">{branchStudents.length}명</div>
+                    <div className="text-xs" style={{ color: 'var(--c-secondary)' }}>
+                      {s.dayOfWeek.map(d => DOW_NAMES[d]).join('·')}요일
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      </div>
+
+      {/* Date Click Popup */}
+      {datePopup && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDatePopup(null)} />
+          <div className="relative w-full max-w-md rounded-t-2xl overflow-hidden" style={{ background: 'var(--c-surface)', maxHeight: '85vh' }}>
+            <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: '1px solid var(--c-border)' }}>
+              <div>
+                <h2 className="text-base font-bold text-w-heading">{datePopup.date}</h2>
+                <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>{DOW_NAMES[datePopup.dayOfWeek]}요일 · {datePopupRows.length}명</p>
+              </div>
+              <button onClick={() => setDatePopup(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-w-subtle t-base">
+                <X size={18} color="var(--c-secondary)" />
+              </button>
+            </div>
+            <div className="overflow-y-auto" style={{ maxHeight: 'calc(85vh - 64px)' }}>
+              {datePopupRows.length === 0 ? (
+                <div className="py-16 text-center">
+                  <p className="text-sm" style={{ color: 'var(--c-secondary)' }}>수업이 없는 날입니다</p>
+                </div>
+              ) : (
+                <div>
+                  {datePopupRows.map(({ subject, student }, idx) => (
+                    <div
+                      key={`${subject.id}-${student.id}`}
+                      className="flex items-center gap-3 px-4 py-3"
+                      style={{ borderBottom: idx < datePopupRows.length - 1 ? '1px solid var(--c-border)' : 'none' }}
+                    >
+                      <span
+                        className="px-2 py-0.5 rounded text-xs font-bold flex-shrink-0 w-12 text-center"
+                        style={{ background: subject.color + '20', color: subject.color }}
+                      >
+                        {subject.name}
+                      </span>
+                      <span className="text-sm flex-shrink-0" style={{ color: 'var(--c-secondary)' }}>{subject.startTime}</span>
+                      <span className="text-sm font-semibold text-w-heading flex-1">{student.name}</span>
+                      <span className="text-xs flex-shrink-0" style={{ color: 'var(--c-secondary)' }}>강사: {subject.teacherName}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

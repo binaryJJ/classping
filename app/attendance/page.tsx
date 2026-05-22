@@ -1,91 +1,107 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
-import { getDayName, getTodayString, formatDate } from '@/lib/utils'
+import { getDayName, getTodayString, formatDate, toLocalDateString, KR_HOLIDAYS_2026 } from '@/lib/utils'
 import { AttendanceStatus } from '@/lib/types'
+import { useBranch, SUBJECTS } from '@/lib/BranchContext'
 
 interface AttendanceRecord {
   studentId: string
   name: string
   subject: string
+  subjectVariant: 'guitar' | 'bass' | 'drums' | 'vocal'
   time: string
-  status: AttendanceStatus | null
   isAdult: boolean
   notifyEmail: string
 }
 
-const DEMO_RECORDS: Record<string, AttendanceRecord[]> = {
-  '2026-05-22': [
-    { studentId: '1', name: '김민준', subject: '수학', time: '14:00', status: null, isAdult: false, notifyEmail: 'parent1@email.com' },
-    { studentId: '2', name: '이서연', subject: '영어', time: '15:00', status: 'present', isAdult: false, notifyEmail: 'parent2@email.com' },
-    { studentId: '3', name: '박지호', subject: '수학', time: '16:00', status: null, isAdult: true, notifyEmail: 'parkjh@email.com' },
-    { studentId: '4', name: '최유나', subject: '영어', time: '17:00', status: null, isAdult: false, notifyEmail: 'parent4@email.com' },
-  ],
-}
+const STATUS_COLOR: Record<AttendanceStatus, string> = { present: 'var(--c-success)', absent: 'var(--c-error)', makeup: 'var(--c-primary)' }
+const STATUS_LABEL: Record<AttendanceStatus, string> = { present: '출석', absent: '결석', makeup: '보강' }
 
 function getDaysInMonth(year: number, month: number) {
   const days: { date: string; day: number }[] = []
   const d = new Date(year, month, 1)
   while (d.getMonth() === month) {
-    days.push({ date: d.toISOString().split('T')[0], day: d.getDay() })
+    days.push({ date: toLocalDateString(d), day: d.getDay() })
     d.setDate(d.getDate() + 1)
   }
   return days
 }
 
+function isClassLocked(date: string, time: string): boolean {
+  const classDateTime = new Date(`${date}T${time}:00`)
+  return new Date() > classDateTime
+}
+
 export default function AttendancePage() {
+  const { students, selectedBranch } = useBranch()
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
   const [selectedDate, setSelectedDate] = useState(getTodayString())
-  const [records, setRecords] = useState<Record<string, Record<string, AttendanceStatus | null>>>(
-    Object.fromEntries(
-      Object.entries(DEMO_RECORDS).map(([date, recs]) => [
-        date,
-        Object.fromEntries(recs.map(r => [r.studentId, r.status]))
-      ])
-    )
-  )
+  const [statuses, setStatuses] = useState<Record<string, Record<string, AttendanceStatus | null>>>({})
   const [notifyModal, setNotifyModal] = useState<{ open: boolean; student?: AttendanceRecord }>({ open: false })
-  const [sending, setSending] = useState(false)
   const [makeupModal, setMakeupModal] = useState<{ open: boolean; student?: AttendanceRecord }>({ open: false })
   const [makeupDate, setMakeupDate] = useState('')
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; student?: AttendanceRecord; status?: AttendanceStatus }>({ open: false })
+  const [sending, setSending] = useState(false)
 
   const days = getDaysInMonth(year, month)
   const firstDay = new Date(year, month, 1).getDay()
 
-  const selectedRecords = DEMO_RECORDS[selectedDate] ?? []
-  const dateStatuses = records[selectedDate] ?? {}
+  function prevMonth() { if (month === 0) { setYear(y => y - 1); setMonth(11) } else setMonth(m => m - 1) }
+  function nextMonth() { if (month === 11) { setYear(y => y + 1); setMonth(0) } else setMonth(m => m + 1) }
 
-  function prevMonth() {
-    if (month === 0) { setYear(y => y - 1); setMonth(11) }
-    else setMonth(m => m - 1)
+  const selectedRecords = useMemo((): AttendanceRecord[] => {
+    const dow = new Date(selectedDate + 'T12:00:00').getDay()
+    const result: AttendanceRecord[] = []
+    for (const subj of SUBJECTS) {
+      if (!subj.dayOfWeek.includes(dow)) continue
+      for (const st of students) {
+        if (st.subject_id !== subj.id) continue
+        result.push({ studentId: st.id, name: st.name, subject: st.subject, subjectVariant: st.subjectVariant, time: subj.startTime, isAdult: st.is_adult, notifyEmail: st.notifyEmail })
+      }
+    }
+    return result
+  }, [selectedDate, students])
+
+  const dateStatuses = statuses[selectedDate] ?? {}
+
+  // 도트: 상태 있으면 상태 색, 수업 있는 날이면 보라, 없으면 null
+  function getDotColor(date: string, dayOfWeek: number): string | null {
+    const s = Object.values(statuses[date] ?? {})
+    if (s.some(v => v === 'absent')) return 'var(--c-error)'
+    if (s.every(v => v === 'present') && s.length > 0) return 'var(--c-success)'
+    if (s.length > 0) return 'var(--c-warning)'
+    if (SUBJECTS.some(subj => subj.dayOfWeek.includes(dayOfWeek))) return '#7c3aed'
+    return null
   }
-  function nextMonth() {
-    if (month === 11) { setYear(y => y + 1); setMonth(0) }
-    else setMonth(m => m + 1)
+
+  function applyStatus(studentId: string, status: AttendanceStatus) {
+    setStatuses(prev => ({ ...prev, [selectedDate]: { ...(prev[selectedDate] ?? {}), [studentId]: status } }))
   }
 
-  function getDateColor(date: string) {
-    const statuses = Object.values(records[date] ?? {})
-    if (statuses.length === 0) return ''
-    if (statuses.some(s => s === 'absent')) return 'bg-red-100'
-    if (statuses.every(s => s === 'present')) return 'bg-green-100'
-    return 'bg-yellow-100'
-  }
-
-  async function markStatus(studentId: string, status: AttendanceStatus) {
-    const record = selectedRecords.find(r => r.studentId === studentId)
-    setRecords(prev => ({
-      ...prev,
-      [selectedDate]: { ...(prev[selectedDate] ?? {}), [studentId]: status }
-    }))
-
-    if (status === 'absent' && record) {
+  function handleMarkClick(record: AttendanceRecord, status: AttendanceStatus) {
+    if (status === 'absent') {
+      applyStatus(record.studentId, status)
       setNotifyModal({ open: true, student: record })
+    } else {
+      setConfirmModal({ open: true, student: record, status })
+    }
+  }
+
+  function confirmStatus() {
+    if (!confirmModal.student || !confirmModal.status) return
+    applyStatus(confirmModal.student.studentId, confirmModal.status)
+    if (confirmModal.status === 'makeup') {
+      setConfirmModal({ open: false })
+      setMakeupModal({ open: true, student: confirmModal.student })
+    } else {
+      setConfirmModal({ open: false })
     }
   }
 
@@ -94,31 +110,13 @@ export default function AttendancePage() {
     setSending(true)
     try {
       const res = await fetch('/api/notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'absence',
-          studentName: notifyModal.student.name,
-          date: formatDate(selectedDate),
-          subjectName: notifyModal.student.subject,
-          teacherName: '담당 선생님',
-          recipientEmail: notifyModal.student.notifyEmail,
-          recipientName: notifyModal.student.isAdult ? notifyModal.student.name : '보호자',
-          isGuardian: !notifyModal.student.isAdult,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'absence', studentName: notifyModal.student.name, date: formatDate(selectedDate), subjectName: notifyModal.student.subject, teacherName: '담당 강사', recipientEmail: notifyModal.student.notifyEmail, recipientName: notifyModal.student.isAdult ? notifyModal.student.name : '보호자', isGuardian: !notifyModal.student.isAdult }),
       })
       const data = await res.json()
-      if (data.success) {
-        alert('알림이 발송되었습니다!')
-      } else {
-        alert('알림 발송 실패: RESEND_API_KEY를 설정해주세요')
-      }
-    } catch {
-      alert('알림 발송 실패')
-    } finally {
-      setSending(false)
-      setNotifyModal({ open: false })
-    }
+      alert(data.success ? '알림이 발송되었습니다!' : 'RESEND_API_KEY를 .env.local에 설정해주세요')
+    } catch { alert('알림 발송 실패') }
+    finally { setSending(false); setNotifyModal({ open: false }) }
   }
 
   async function sendMakeupNotification() {
@@ -126,223 +124,177 @@ export default function AttendancePage() {
     setSending(true)
     try {
       const res = await fetch('/api/notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'makeup',
-          studentName: makeupModal.student.name,
-          originalDate: formatDate(selectedDate),
-          makeupDate: formatDate(makeupDate),
-          subjectName: makeupModal.student.subject,
-          teacherName: '담당 선생님',
-          recipientEmail: makeupModal.student.notifyEmail,
-          recipientName: makeupModal.student.isAdult ? makeupModal.student.name : '보호자',
-          isGuardian: !makeupModal.student.isAdult,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'makeup', studentName: makeupModal.student.name, originalDate: formatDate(selectedDate), makeupDate: formatDate(makeupDate), subjectName: makeupModal.student.subject, teacherName: '담당 강사', recipientEmail: makeupModal.student.notifyEmail, recipientName: makeupModal.student.isAdult ? makeupModal.student.name : '보호자', isGuardian: !makeupModal.student.isAdult }),
       })
       const data = await res.json()
-      if (data.success) {
-        alert('보강 알림이 발송되었습니다!')
-      } else {
-        alert('알림 발송 실패: RESEND_API_KEY를 설정해주세요')
-      }
-    } catch {
-      alert('알림 발송 실패')
-    } finally {
-      setSending(false)
-      setMakeupModal({ open: false })
-      setMakeupDate('')
-    }
+      alert(data.success ? '보강 알림 발송!' : 'RESEND_API_KEY를 설정해주세요')
+    } catch { alert('알림 발송 실패') }
+    finally { setSending(false); setMakeupModal({ open: false }); setMakeupDate('') }
   }
 
   return (
-    <div>
-      <div className="bg-white px-4 pt-12 pb-4 border-b border-gray-100">
-        <h1 className="text-xl font-bold text-gray-900">출결 관리</h1>
-      </div>
-
-      {/* Calendar */}
-      <div className="bg-white border-b border-gray-100 px-4 pb-4">
-        <div className="flex items-center justify-between py-3">
-          <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
-            ‹
-          </button>
-          <span className="font-semibold text-gray-800">{year}년 {month + 1}월</span>
-          <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
-            ›
-          </button>
-        </div>
-
-        <div className="grid grid-cols-7 mb-1">
-          {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
-            <div key={d} className={`text-center text-xs font-medium py-1 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-400'}`}>
-              {d}
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-7 gap-y-1">
-          {Array.from({ length: firstDay }).map((_, i) => <div key={`empty-${i}`} />)}
-          {days.map(({ date, day }) => {
-            const isToday = date === getTodayString()
-            const isSelected = date === selectedDate
-            const colorClass = getDateColor(date)
-            return (
-              <button
-                key={date}
-                onClick={() => setSelectedDate(date)}
-                className={`
-                  aspect-square flex items-center justify-center text-sm rounded-full mx-auto w-8 h-8 transition-colors
-                  ${isSelected ? 'bg-primary-600 text-white font-bold' : ''}
-                  ${!isSelected && isToday ? 'border-2 border-primary-400 font-bold text-primary-600' : ''}
-                  ${!isSelected && !isToday && colorClass ? colorClass : ''}
-                  ${!isSelected && day === 0 ? 'text-red-400' : ''}
-                  ${!isSelected && day === 6 ? 'text-blue-400' : ''}
-                `}
-              >
-                {new Date(date).getDate()}
-              </button>
-            )
-          })}
+    <div style={{ background: 'var(--c-subtle)', minHeight: '100%' }}>
+      <div className="w-header px-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-base font-bold text-w-heading">출결 관리</h1>
+          <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>{selectedBranch}</p>
         </div>
       </div>
 
-      {/* Selected Date Records */}
-      <div className="px-4 py-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-gray-800 text-sm">
-            {selectedDate} ({getDayName(new Date(selectedDate + 'T12:00:00').getDay())}요일)
-          </h2>
-          <div className="flex gap-1.5 text-xs text-gray-400">
-            <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded-full">출석 {Object.values(dateStatuses).filter(s => s === 'present').length}</span>
-            <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full">결석 {Object.values(dateStatuses).filter(s => s === 'absent').length}</span>
+      <div className="px-4 py-4 space-y-4">
+        {/* Calendar */}
+        <div className="w-card" style={{ padding: '16px' }}>
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-w-subtle t-base">
+              <ChevronLeft size={20} color="var(--c-primary)" />
+            </button>
+            <span className="text-base font-bold text-w-heading">{year}년 {month + 1}월</span>
+            <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-w-subtle t-base">
+              <ChevronRight size={20} color="var(--c-primary)" />
+            </button>
           </div>
-        </div>
-
-        {selectedRecords.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            <div className="text-3xl mb-2">📅</div>
-            <div className="text-sm">이 날 수업이 없습니다</div>
+          <div className="grid grid-cols-7 mb-1">
+            {['일','월','화','수','목','금','토'].map((d, i) => (
+              <div key={d} className="text-center text-xs font-semibold py-1" style={{ color: i === 0 ? 'var(--c-error)' : i === 6 ? 'var(--c-primary)' : 'var(--c-secondary)' }}>{d}</div>
+            ))}
           </div>
-        ) : (
-          <div className="space-y-3">
-            {selectedRecords.map(record => {
-              const status = dateStatuses[record.studentId] ?? null
+          <div className="grid grid-cols-7">
+            {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
+            {days.map(({ date, day }) => {
+              const isToday = date === getTodayString()
+              const isSelected = date === selectedDate
+              const dot = getDotColor(date, day)
+              const holiday = KR_HOLIDAYS_2026[date]
+              const isHoliday = day === 0 || !!holiday
               return (
-                <div key={record.studentId} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3">
-                  <div className="flex items-center justify-between mb-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-semibold text-sm">
-                        {record.name[0]}
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold text-gray-900">{record.name}</div>
-                        <div className="text-xs text-gray-400">{record.subject} · {record.time} · {record.isAdult ? '성인' : '미성년'}</div>
-                      </div>
-                    </div>
-                    {status && (
-                      <Badge variant={status}>
-                        {status === 'present' ? '출석' : status === 'absent' ? '결석' : '보강'}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => markStatus(record.studentId, 'present')}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                        status === 'present'
-                          ? 'bg-green-500 text-white border-green-500'
-                          : 'border-gray-200 text-gray-600 hover:bg-green-50 hover:border-green-200 hover:text-green-700'
-                      }`}
-                    >
-                      출석
-                    </button>
-                    <button
-                      onClick={() => markStatus(record.studentId, 'absent')}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                        status === 'absent'
-                          ? 'bg-red-500 text-white border-red-500'
-                          : 'border-gray-200 text-gray-600 hover:bg-red-50 hover:border-red-200 hover:text-red-700'
-                      }`}
-                    >
-                      결석
-                    </button>
-                    <button
-                      onClick={() => markStatus(record.studentId, 'makeup')}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                        status === 'makeup'
-                          ? 'bg-blue-500 text-white border-blue-500'
-                          : 'border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700'
-                      }`}
-                    >
-                      보강
-                    </button>
-                  </div>
-                  {status === 'absent' && (
-                    <button
-                      onClick={() => setMakeupModal({ open: true, student: record })}
-                      className="mt-2 w-full py-1.5 text-xs text-blue-600 border border-blue-100 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-                    >
-                      보강 일정 등록 및 알림 발송
-                    </button>
+                <button key={date} onClick={() => setSelectedDate(date)} className="flex flex-col items-center py-1 min-h-10">
+                  <span
+                    className="w-7 h-7 flex items-center justify-center rounded-full text-xs t-base"
+                    style={{
+                      background: isSelected ? 'var(--c-primary)' : isToday ? 'rgba(124,58,237,0.12)' : 'transparent',
+                      color: isSelected ? '#fff' : isHoliday ? 'var(--c-error)' : day === 6 ? 'var(--c-primary)' : 'var(--c-body)',
+                      fontWeight: isSelected || isToday ? 700 : 400,
+                    }}
+                  >
+                    {new Date(date + 'T12:00:00').getDate()}
+                  </span>
+                  {holiday && !isSelected && (
+                    <span className="text-[7px] leading-tight text-center w-full truncate px-0.5" style={{ color: 'var(--c-error)' }}>{holiday}</span>
                   )}
-                </div>
+                  {dot && !isSelected && <div className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ background: dot }} />}
+                </button>
               )
             })}
           </div>
-        )}
+        </div>
+
+        {/* Records */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold" style={{ color: 'var(--c-secondary)' }}>
+              {selectedDate} ({getDayName(new Date(selectedDate + 'T12:00:00').getDay())}요일)
+              {KR_HOLIDAYS_2026[selectedDate] && <span className="ml-1" style={{ color: 'var(--c-error)' }}>· {KR_HOLIDAYS_2026[selectedDate]}</span>}
+            </span>
+            <div className="flex gap-3 text-xs">
+              <span style={{ color: 'var(--c-success)' }}>출석 {Object.values(dateStatuses).filter(s => s === 'present').length}</span>
+              <span style={{ color: 'var(--c-error)' }}>결석 {Object.values(dateStatuses).filter(s => s === 'absent').length}</span>
+            </div>
+          </div>
+
+          {selectedRecords.length === 0 ? (
+            <div className="w-card py-10 text-center">
+              <p className="text-sm" style={{ color: 'var(--c-secondary)' }}>이 날 수업이 없습니다</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {selectedRecords.map(record => {
+                const status = dateStatuses[record.studentId] ?? null
+                const locked = isClassLocked(selectedDate, record.time)
+                return (
+                  <div key={record.studentId} className="w-card" style={{ padding: '16px' }}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm" style={{ background: 'rgba(124,58,237,0.1)', color: 'var(--c-primary)' }}>
+                          {record.name[0]}
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-w-heading">{record.name}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <Badge variant={record.subjectVariant}>{record.subject}</Badge>
+                            <span className="text-xs" style={{ color: 'var(--c-secondary)' }}>{record.time}</span>
+                            {locked && <span className="text-xs font-medium px-1.5 py-0.5 rounded-pill" style={{ background: 'rgba(112,115,124,0.1)', color: 'var(--c-secondary)' }}>잠금</span>}
+                          </div>
+                        </div>
+                      </div>
+                      {status && <Badge variant={status}>{STATUS_LABEL[status]}</Badge>}
+                    </div>
+                    {locked ? (
+                      <div className="py-2 text-center text-xs rounded-input" style={{ background: 'var(--c-subtle)', color: 'var(--c-secondary)' }}>
+                        수업 시간이 지나 변경할 수 없습니다
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 rounded-input overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
+                        {(['present', 'absent', 'makeup'] as AttendanceStatus[]).map((s, idx) => (
+                          <button key={s} onClick={() => handleMarkClick(record, s)} className="py-2 text-sm font-semibold t-base"
+                            style={{ background: status === s ? STATUS_COLOR[s] : 'transparent', color: status === s ? '#fff' : STATUS_COLOR[s], borderRight: idx < 2 ? '1px solid var(--c-border)' : 'none' }}>
+                            {STATUS_LABEL[s]}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Absence Notification Modal */}
-      <Modal isOpen={notifyModal.open} onClose={() => setNotifyModal({ open: false })} title="결석 알림 발송">
-        {notifyModal.student && (
+      <Modal isOpen={confirmModal.open} onClose={() => setConfirmModal({ open: false })} title="출결 처리 확인">
+        {confirmModal.student && confirmModal.status && (
           <div className="space-y-4">
-            <div className="bg-red-50 rounded-xl p-4">
-              <div className="text-sm text-red-700 font-medium mb-1">{notifyModal.student.name} 결석 처리됨</div>
-              <div className="text-xs text-red-600">
-                {notifyModal.student.isAdult ? '본인' : '보호자'}에게 알림을 발송할까요?
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                수신: {notifyModal.student.notifyEmail}
-              </div>
+            <div className="px-4 py-3 rounded-card" style={{ background: 'var(--c-subtle)' }}>
+              <p className="text-sm font-semibold text-w-heading">{confirmModal.student.name}님을 <span style={{ color: STATUS_COLOR[confirmModal.status] }}>{STATUS_LABEL[confirmModal.status]}</span>처리하시겠습니까?</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--c-secondary)' }}>{selectedDate} · {confirmModal.student.subject} {confirmModal.student.time}</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="ghost" fullWidth onClick={() => setNotifyModal({ open: false })}>
-                건너뛰기
-              </Button>
-              <Button fullWidth onClick={sendNotification} disabled={sending}>
-                {sending ? '발송 중...' : '알림 발송'}
-              </Button>
+              <Button variant="secondary" fullWidth onClick={() => setConfirmModal({ open: false })}>취소</Button>
+              <Button fullWidth onClick={confirmStatus}>확인</Button>
             </div>
           </div>
         )}
       </Modal>
 
-      {/* Makeup Notification Modal */}
+      <Modal isOpen={notifyModal.open} onClose={() => setNotifyModal({ open: false })} title="결석 알림">
+        {notifyModal.student && (
+          <div className="space-y-4">
+            <div className="px-4 py-3 rounded-card" style={{ background: 'var(--c-subtle)' }}>
+              <p className="text-sm font-semibold text-w-heading">{notifyModal.student.name} 결석 처리됨</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--c-secondary)' }}>{notifyModal.student.isAdult ? '본인' : '보호자'}({notifyModal.student.notifyEmail})에게 알림을 발송할까요?</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" fullWidth onClick={() => setNotifyModal({ open: false })}>건너뛰기</Button>
+              <Button fullWidth onClick={sendNotification} disabled={sending}>{sending ? '발송 중...' : '알림 발송'}</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       <Modal isOpen={makeupModal.open} onClose={() => setMakeupModal({ open: false })} title="보강 일정 등록">
         {makeupModal.student && (
           <div className="space-y-4">
-            <div className="bg-blue-50 rounded-xl p-4">
-              <div className="text-sm text-blue-700 font-medium">{makeupModal.student.name} 보강 일정</div>
-              <div className="text-xs text-gray-500 mt-1">결석일: {selectedDate}</div>
+            <div className="px-4 py-3 rounded-card" style={{ background: 'var(--c-subtle)' }}>
+              <p className="text-sm font-semibold text-w-heading">{makeupModal.student.name} 보강</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--c-secondary)' }}>결석일: {selectedDate}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">보강 날짜</label>
-              <input
-                type="date"
-                value={makeupDate}
-                onChange={e => setMakeupDate(e.target.value)}
-                min={getTodayString()}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400"
-              />
+              <label className="block text-sm font-medium text-w-heading mb-1.5">보강 날짜</label>
+              <input type="date" value={makeupDate} onChange={e => setMakeupDate(e.target.value)} min={getTodayString()} className="w-input" />
             </div>
             <div className="flex gap-2">
-              <Button variant="ghost" fullWidth onClick={() => setMakeupModal({ open: false })}>
-                취소
-              </Button>
-              <Button fullWidth onClick={sendMakeupNotification} disabled={sending || !makeupDate}>
-                {sending ? '발송 중...' : '보강 확정 & 알림'}
-              </Button>
+              <Button variant="secondary" fullWidth onClick={() => setMakeupModal({ open: false })}>취소</Button>
+              <Button fullWidth onClick={sendMakeupNotification} disabled={sending || !makeupDate}>{sending ? '발송 중...' : '보강 확정 & 알림'}</Button>
             </div>
           </div>
         )}

@@ -1,137 +1,187 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Badge from '@/components/ui/Badge'
-import { formatCurrency, calculateRefund } from '@/lib/utils'
-
-interface RefundItem {
-  studentId: string
-  name: string
-  subject: string
-  monthlyFee: number
-  totalClasses: number
-  absentCount: number
-  isAdult: boolean
-}
-
-const DEMO_DATA: RefundItem[] = [
-  { studentId: '1', name: '김민준', subject: '수학', monthlyFee: 150000, totalClasses: 12, absentCount: 2, isAdult: false },
-  { studentId: '2', name: '이서연', subject: '영어', monthlyFee: 180000, totalClasses: 8, absentCount: 1, isAdult: false },
-  { studentId: '3', name: '박지호', subject: '수학', monthlyFee: 200000, totalClasses: 12, absentCount: 3, isAdult: true },
-  { studentId: '4', name: '최유나', subject: '영어', monthlyFee: 150000, totalClasses: 8, absentCount: 0, isAdult: false },
-]
-
-const CURRENT_MONTH = '2026년 5월'
+import { calculateRefund } from '@/lib/utils'
+import { useBranch } from '@/lib/BranchContext'
 
 export default function SettlementPage() {
+  const { students, selectedBranch } = useBranch()
+  const now = new Date()
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
+  const [refundDone, setRefundDone] = useState<Record<string, boolean>>({})
 
-  const withRefund = DEMO_DATA.map(item => ({
-    ...item,
-    refund: calculateRefund(item.monthlyFee, item.totalClasses, item.absentCount),
-    perClass: Math.round(item.monthlyFee / item.totalClasses),
-  }))
+  const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1
+  const headerLabel = isCurrentMonth ? '이번 달 환불 현황' : `${selectedYear}년 ${selectedMonth}월 환불 현황`
+
+  const yearOptions = Array.from({ length: 4 }, (_, i) => now.getFullYear() - 1 + i)
+  const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
+
+  // 년/월 변경 시 환불 완료 상태 초기화
+  useEffect(() => {
+    setRefundDone({})
+  }, [selectedYear, selectedMonth])
+
+  // 현재 달: 실제 결석 데이터 사용 / 다른 달: 결석 없음 (데이터 없음)
+  const withRefund = students.map(item => {
+    const absentCount = isCurrentMonth ? item.absentCount : 0
+    return {
+      ...item,
+      absentCount,
+      refund: calculateRefund(item.monthly_fee, item.totalClasses, absentCount),
+      perClass: Math.round(item.monthly_fee / item.totalClasses),
+    }
+  })
+
+  function handleRefundComplete(id: string) {
+    if (confirm('환불처리가 완료되었나요?')) {
+      setRefundDone(prev => ({ ...prev, [id]: true }))
+    }
+  }
 
   const totalRefund = withRefund.reduce((sum, item) => sum + item.refund, 0)
+  const completedRefund = withRefund.filter(item => refundDone[item.id]).reduce((sum, item) => sum + item.refund, 0)
+  const pendingRefund = totalRefund - completedRefund
   const totalAbsent = withRefund.reduce((sum, item) => sum + item.absentCount, 0)
 
   return (
-    <div>
-      <div className="bg-white px-4 pt-12 pb-4 border-b border-gray-100">
-        <h1 className="text-xl font-bold text-gray-900">환불 정산</h1>
-        <p className="text-sm text-gray-400 mt-0.5">{CURRENT_MONTH} 기준</p>
-      </div>
-
-      {/* Summary */}
-      <div className="bg-primary-600 mx-4 mt-4 rounded-2xl p-4 text-white">
-        <div className="text-primary-200 text-sm mb-1">이번 달 환불 예정 금액</div>
-        <div className="text-3xl font-bold">{formatCurrency(totalRefund)}</div>
-        <div className="flex gap-4 mt-3 text-sm">
-          <div>
-            <div className="text-primary-200 text-xs">결석 학생</div>
-            <div className="font-semibold">{withRefund.filter(i => i.absentCount > 0).length}명</div>
-          </div>
-          <div>
-            <div className="text-primary-200 text-xs">총 결석 횟수</div>
-            <div className="font-semibold">{totalAbsent}회</div>
-          </div>
-          <div>
-            <div className="text-primary-200 text-xs">전체 학생</div>
-            <div className="font-semibold">{DEMO_DATA.length}명</div>
-          </div>
+    <div style={{ background: 'var(--c-subtle)', minHeight: '100%' }}>
+      <div className="w-header px-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-base font-bold text-w-heading">환불 정산</h1>
+          <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>{selectedBranch}</p>
         </div>
       </div>
 
-      {/* Formula Info */}
-      <div className="mx-4 mt-3 bg-gray-50 rounded-xl p-3 border border-gray-100">
-        <div className="text-xs text-gray-500 font-medium mb-1">환불 계산 방식</div>
-        <div className="text-xs text-gray-600">월 수강료 ÷ 수업 횟수 × 결석 횟수</div>
-      </div>
-
-      {/* Student List */}
-      <div className="px-4 mt-4 space-y-3 pb-6">
-        <h2 className="font-semibold text-gray-800 text-sm">학생별 환불 내역</h2>
-        {withRefund.map(item => (
-          <div key={item.studentId} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-semibold text-sm">
-                    {item.name[0]}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-900 text-sm">{item.name}</span>
-                      <Badge variant={item.isAdult ? 'adult' : 'minor'}>
-                        {item.isAdult ? '성인' : '미성년'}
-                      </Badge>
-                    </div>
-                    <div className="text-xs text-gray-400">{item.subject}</div>
-                  </div>
-                </div>
-                {item.refund > 0 ? (
-                  <div className="text-right">
-                    <div className="text-sm font-bold text-red-600">-{formatCurrency(item.refund)}</div>
-                    <div className="text-xs text-gray-400">환불 예정</div>
-                  </div>
-                ) : (
-                  <div className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full">환불 없음</div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-4 gap-2 text-center">
-                <div className="bg-gray-50 rounded-lg p-2">
-                  <div className="text-xs font-bold text-gray-700">{formatCurrency(item.monthlyFee)}</div>
-                  <div className="text-[10px] text-gray-400 mt-0.5">월 수강료</div>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-2">
-                  <div className="text-xs font-bold text-gray-700">{item.totalClasses}회</div>
-                  <div className="text-[10px] text-gray-400 mt-0.5">수업 횟수</div>
-                </div>
-                <div className="bg-red-50 rounded-lg p-2">
-                  <div className="text-xs font-bold text-red-600">{item.absentCount}회</div>
-                  <div className="text-[10px] text-red-400 mt-0.5">결석</div>
-                </div>
-                <div className="bg-blue-50 rounded-lg p-2">
-                  <div className="text-xs font-bold text-blue-600">{formatCurrency(item.perClass)}</div>
-                  <div className="text-[10px] text-blue-400 mt-0.5">회당 금액</div>
-                </div>
-              </div>
-
-              {item.absentCount > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between text-xs">
-                  <span className="text-gray-500">
-                    {formatCurrency(item.perClass)} × {item.absentCount}회
-                  </span>
-                  <span className="font-bold text-red-600">= {formatCurrency(item.refund)}</span>
-                </div>
-              )}
+      <div className="px-4 py-4 space-y-4">
+        {/* Summary Card */}
+        <div className="w-card" style={{ background: 'var(--c-primary)', border: 'none', padding: '20px' }}>
+          <p className="text-xs font-medium mb-3" style={{ color: 'rgba(255,255,255,0.7)' }}>{headerLabel}</p>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.7)' }}>환불 완료</p>
+              <p className="text-xl font-bold text-white">{completedRefund.toLocaleString()}원</p>
+            </div>
+            <div>
+              <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.7)' }}>환불 미완료</p>
+              <p className="text-xl font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>{pendingRefund.toLocaleString()}원</p>
             </div>
           </div>
-        ))}
-      </div>
+          <div className="pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>총 환불 예정</p>
+            <p className="text-base font-semibold text-white mt-0.5">{totalRefund.toLocaleString()}원</p>
+          </div>
+          <div className="flex gap-6 mt-3">
+            {[
+              { label: '결석 학생', value: `${withRefund.filter(i => i.absentCount > 0).length}명` },
+              { label: '총 결석', value: `${totalAbsent}회` },
+              { label: '전체 학생', value: `${students.length}명` },
+            ].map(s => (
+              <div key={s.label}>
+                <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.6)' }}>{s.label}</p>
+                <p className="text-sm font-semibold text-white">{s.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
 
-      {/* Export hint */}
-      <div className="mx-4 mb-4 p-3 bg-blue-50 rounded-xl border border-blue-100 text-center">
-        <p className="text-xs text-blue-600">Supabase 연동 후 월별 정산 내역 저장 및 내보내기 기능이 활성화됩니다</p>
+        {/* Formula */}
+        <div className="w-card" style={{ padding: '12px 16px' }}>
+          <p className="text-xs font-medium" style={{ color: 'var(--c-secondary)' }}>계산 방식</p>
+          <p className="text-sm text-w-body mt-0.5">월 수강료 ÷ 수업 횟수 × 결석 횟수</p>
+        </div>
+
+        {/* Year/Month filter + section header */}
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold px-1" style={{ color: 'var(--c-secondary)' }}>수강생별 내역</p>
+          <div className="flex items-center gap-1.5">
+            <select
+              value={selectedYear}
+              onChange={e => setSelectedYear(Number(e.target.value))}
+              className="text-xs font-medium px-2 py-1.5 rounded-input t-base"
+              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-body)', outline: 'none' }}
+            >
+              {yearOptions.map(y => <option key={y} value={y}>{y}년</option>)}
+            </select>
+            <select
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(Number(e.target.value))}
+              className="text-xs font-medium px-2 py-1.5 rounded-input t-base"
+              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-body)', outline: 'none' }}
+            >
+              {monthOptions.map(m => <option key={m} value={m}>{m}월</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Student list */}
+        <div className="space-y-3">
+          {withRefund.map(item => {
+            const done = refundDone[item.id]
+            return (
+              <div
+                key={item.id}
+                className="w-card overflow-hidden"
+                style={{ opacity: done ? 0.65 : 1, background: done ? '#F0F0F2' : 'var(--c-surface)', transition: 'all 300ms' }}
+              >
+                <div className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid var(--c-border)' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: done ? 'rgba(112,115,124,0.1)' : 'rgba(124,58,237,0.1)', color: done ? 'var(--c-secondary)' : 'var(--c-primary)' }}>
+                      {item.name[0]}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-w-heading">{item.name}</span>
+                        <Badge variant={item.is_adult ? 'adult' : 'minor'}>{item.is_adult ? '성인' : '미성년'}</Badge>
+                        <Badge variant={item.subjectVariant}>{item.subject}</Badge>
+                      </div>
+                      {done && <span className="text-xs font-medium" style={{ color: 'var(--c-secondary)' }}>환불 완료</span>}
+                    </div>
+                  </div>
+                  {item.refund > 0 ? (
+                    <div className="text-right">
+                      <div className="text-sm font-bold" style={{ color: done ? 'var(--c-secondary)' : 'var(--c-error)' }}>-{item.refund.toLocaleString()}원</div>
+                      <div className="text-xs" style={{ color: 'var(--c-secondary)' }}>환불 예정</div>
+                    </div>
+                  ) : (
+                    <span className="text-xs font-semibold px-2 py-1 rounded-pill" style={{ background: 'var(--c-success)18', color: 'var(--c-success)' }}>환불 없음</span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-4 mt-3">
+                  {[
+                    { label: '수강료', v: `${item.monthly_fee.toLocaleString()}원`, c: 'var(--c-body)' },
+                    { label: '수업수', v: `${item.totalClasses}회`, c: 'var(--c-body)' },
+                    { label: '결석', v: `${item.absentCount}회`, c: 'var(--c-error)' },
+                    { label: '회당', v: `${item.perClass.toLocaleString()}원`, c: 'var(--c-primary)' },
+                  ].map((s, i) => (
+                    <div key={i} className="text-center py-2" style={{ borderRight: i < 3 ? '1px solid var(--c-border)' : 'none' }}>
+                      <div className="text-xs font-semibold" style={{ color: s.c }}>{s.v}</div>
+                      <div className="text-[10px] mt-0.5" style={{ color: 'var(--c-secondary)' }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {item.absentCount > 0 && (
+                  <div className="flex items-center justify-between mt-3 pt-3 px-1" style={{ borderTop: '1px solid var(--c-border)' }}>
+                    <span className="text-xs" style={{ color: 'var(--c-secondary)' }}>{item.perClass.toLocaleString()}원 × {item.absentCount}회</span>
+                    <span className="text-xs font-bold" style={{ color: done ? 'var(--c-secondary)' : 'var(--c-error)' }}>= {item.refund.toLocaleString()}원</span>
+                  </div>
+                )}
+
+                {item.refund > 0 && !done && (
+                  <button onClick={() => handleRefundComplete(item.id)} className="mt-3 w-full py-2 text-sm font-semibold rounded-pill t-base hover:opacity-80" style={{ background: 'var(--c-primary)', color: 'white' }}>
+                    환불 완료
+                  </button>
+                )}
+                {done && item.refund > 0 && (
+                  <div className="mt-3 py-2 text-center text-xs font-medium rounded-pill" style={{ background: 'rgba(112,115,124,0.12)', color: 'var(--c-secondary)' }}>환불 처리 완료</div>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

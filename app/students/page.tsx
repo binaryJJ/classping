@@ -2,128 +2,106 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { Search, Plus, ChevronRight } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
-import Button from '@/components/ui/Button'
 import { calculateAge, formatCurrency } from '@/lib/utils'
-import { Student } from '@/lib/types'
-
-const DEMO_STUDENTS: Student[] = [
-  {
-    id: '1', name: '김민준', birth_date: '2008-03-15', phone: '010-1234-5678',
-    email: null, is_adult: false, monthly_fee: 150000, start_date: '2024-03-01',
-    guardian_name: '김부모', guardian_email: 'parent1@email.com', guardian_phone: '010-9876-5432',
-    created_at: '2024-03-01',
-  },
-  {
-    id: '2', name: '이서연', birth_date: '2005-07-22', phone: '010-2345-6789',
-    email: 'leesy@email.com', is_adult: false, monthly_fee: 180000, start_date: '2024-01-15',
-    guardian_name: '이부모', guardian_email: 'parent2@email.com', guardian_phone: '010-8765-4321',
-    created_at: '2024-01-15',
-  },
-  {
-    id: '3', name: '박지호', birth_date: '2002-11-30', phone: '010-3456-7890',
-    email: 'parkjh@email.com', is_adult: true, monthly_fee: 200000, start_date: '2024-02-01',
-    guardian_name: null, guardian_email: null, guardian_phone: null,
-    created_at: '2024-02-01',
-  },
-  {
-    id: '4', name: '최유나', birth_date: '2009-05-10', phone: '010-4567-8901',
-    email: null, is_adult: false, monthly_fee: 150000, start_date: '2024-04-01',
-    guardian_name: '최부모', guardian_email: 'parent4@email.com', guardian_phone: '010-7654-3210',
-    created_at: '2024-04-01',
-  },
-]
+import { useBranch } from '@/lib/BranchContext'
 
 export default function StudentsPage() {
+  const { students, selectedBranch } = useBranch()
+  const branchLabel = selectedBranch.slice(0, 2)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'adult' | 'minor'>('all')
 
-  const filtered = DEMO_STUDENTS.filter(s => {
+  const filtered = students.filter(s => {
     const matchSearch = s.name.includes(search) || s.phone.includes(search)
     const matchFilter = filter === 'all' || (filter === 'adult' ? s.is_adult : !s.is_adult)
     return matchSearch && matchFilter
   })
 
   return (
-    <div>
-      {/* Header */}
-      <div className="bg-white px-4 pt-12 pb-4 border-b border-gray-100 sticky top-0 z-10">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-bold text-gray-900">학생 관리</h1>
-          <Link href="/students/new">
-            <Button size="sm">+ 학생 등록</Button>
-          </Link>
+    <div style={{ background: 'var(--c-subtle)', minHeight: '100%' }}>
+      <div className="w-header px-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-base font-bold text-w-heading">학생</h1>
+          <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>{selectedBranch}</p>
         </div>
-        <input
-          type="search"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="이름 또는 연락처로 검색"
-          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
-        />
-        <div className="flex gap-2 mt-2.5">
-          {(['all', 'adult', 'minor'] as const).map(f => (
+        <Link href="/students/new">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center t-base hover:opacity-80" style={{ background: 'var(--c-primary)' }}>
+            <Plus size={18} color="white" strokeWidth={2.5} />
+          </div>
+        </Link>
+      </div>
+
+      <div className="px-4 py-4 space-y-3">
+        <div className="flex items-center gap-2 px-3 py-2.5 rounded-input" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+          <Search size={15} color="var(--c-secondary)" />
+          <input
+            type="search"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="이름 또는 연락처 검색"
+            className="flex-1 bg-transparent text-sm outline-none"
+            style={{ color: 'var(--c-body)' }}
+          />
+        </div>
+
+        <div className="flex gap-2">
+          {([['all', '전체'], ['minor', '미성년'], ['adult', '성인']] as const).map(([val, label]) => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                filter === f
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-              }`}
+              key={val}
+              onClick={() => setFilter(val)}
+              className="px-4 py-1.5 rounded-pill text-sm font-medium t-base"
+              style={{
+                background: filter === val ? 'var(--c-primary)' : 'var(--c-surface)',
+                color: filter === val ? 'white' : 'var(--c-secondary)',
+                border: filter === val ? 'none' : '1px solid var(--c-border)',
+              }}
             >
-              {f === 'all' ? `전체 ${DEMO_STUDENTS.length}` : f === 'adult' ? '성인' : '미성년자'}
+              {label}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* List */}
-      <div className="px-4 py-4 space-y-3">
+        <p className="text-xs" style={{ color: 'var(--c-secondary)' }}>{filtered.length}명</p>
+
         {filtered.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            <div className="text-4xl mb-3">👥</div>
-            <div className="font-medium">학생이 없습니다</div>
-            <div className="text-sm mt-1">+ 학생 등록 버튼으로 추가해보세요</div>
+          <div className="w-card text-center py-12">
+            <p className="text-sm" style={{ color: 'var(--c-secondary)' }}>학생이 없습니다</p>
+            <Link href="/students/new" className="text-sm font-medium mt-2 inline-block" style={{ color: 'var(--c-primary)' }}>
+              + 학생 등록하기
+            </Link>
           </div>
         ) : (
-          filtered.map(student => <StudentCard key={student.id} student={student} />)
+          <div className="w-card" style={{ padding: 0, overflow: 'hidden' }}>
+            {filtered.map((s, idx) => (
+              <Link
+                key={s.id}
+                href={`/students/${s.id}`}
+                className="flex items-center px-4 py-3 t-base hover:bg-w-subtle"
+                style={{ borderBottom: idx < filtered.length - 1 ? '1px solid var(--c-border)' : 'none' }}
+              >
+                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold mr-3 flex-shrink-0" style={{ background: 'rgba(124,58,237,0.1)', color: 'var(--c-primary)', fontSize: '11px' }}>
+                  {branchLabel}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-sm font-semibold text-w-heading">{s.name}</span>
+                    <Badge variant={s.is_adult ? 'adult' : 'minor'}>{s.is_adult ? '성인' : '미성년'}</Badge>
+                    <Badge variant={s.subjectVariant}>{s.subject}</Badge>
+                  </div>
+                  <div className="text-xs mt-0.5" style={{ color: 'var(--c-secondary)' }}>만 {calculateAge(s.birth_date)}세 · {s.phone}</div>
+                </div>
+                <div className="text-right mr-2">
+                  <div className="text-sm font-semibold text-w-heading">{formatCurrency(s.monthly_fee)}</div>
+                  <div className="text-xs" style={{ color: 'var(--c-secondary)' }}>월 수강료</div>
+                </div>
+                <ChevronRight size={14} color="var(--c-border)" />
+              </Link>
+            ))}
+          </div>
         )}
       </div>
     </div>
-  )
-}
-
-function StudentCard({ student }: { student: Student }) {
-  return (
-    <Link href={`/students/${student.id}`}>
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:border-primary-200 transition-colors">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-bold">
-              {student.name[0]}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900">{student.name}</span>
-                <Badge variant={student.is_adult ? 'adult' : 'minor'}>
-                  {student.is_adult ? '성인' : '미성년'}
-                </Badge>
-              </div>
-              <div className="text-xs text-gray-400 mt-0.5">만 {calculateAge(student.birth_date)}세 · {student.phone}</div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-sm font-semibold text-gray-700">{formatCurrency(student.monthly_fee)}</div>
-            <div className="text-xs text-gray-400">월 수강료</div>
-          </div>
-        </div>
-        {!student.is_adult && student.guardian_email && (
-          <div className="mt-2.5 pt-2.5 border-t border-gray-50 text-xs text-gray-400">
-            보호자: {student.guardian_name} · {student.guardian_email}
-          </div>
-        )}
-      </div>
-    </Link>
   )
 }
